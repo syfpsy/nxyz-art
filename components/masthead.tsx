@@ -159,6 +159,71 @@ function Filmstrip({
   setActiveIdx: (i: number) => void;
 }) {
   const stripRef = useRef<HTMLDivElement>(null);
+  // Drag state lives in a ref so handlers stay stable and don't rerender.
+  // `moved` is the maximum pixel distance traveled — used to suppress the
+  // child link's click if the pointer moved enough to count as a drag.
+  const dragRef = useRef({
+    active: false,
+    startX: 0,
+    startScroll: 0,
+    moved: 0,
+    pointerId: 0,
+  });
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = stripRef.current;
+    if (!el) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    dragRef.current = {
+      active: true,
+      startX: e.clientX,
+      startScroll: el.scrollLeft,
+      moved: 0,
+      pointerId: e.pointerId,
+    };
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {}
+    el.setAttribute("data-dragging", "true");
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current;
+    const el = stripRef.current;
+    if (!d.active || !el) return;
+    const dx = e.clientX - d.startX;
+    d.moved = Math.max(d.moved, Math.abs(dx));
+    el.scrollLeft = d.startScroll - dx;
+  };
+
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = stripRef.current;
+    const d = dragRef.current;
+    if (!el || !d.active) return;
+    try {
+      el.releasePointerCapture(e.pointerId);
+    } catch {}
+    d.active = false;
+    el.removeAttribute("data-dragging");
+  };
+
+  // Convert vertical wheel deltas into horizontal scroll within the strip,
+  // but only when the strip can actually still scroll in that direction —
+  // otherwise fall through so the page can keep scrolling naturally.
+  const onWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    const el = stripRef.current;
+    if (!el) return;
+    const delta = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : 0;
+    if (delta === 0) return;
+    const max = el.scrollWidth - el.clientWidth;
+    const atStart = el.scrollLeft <= 0 && delta < 0;
+    const atEnd = el.scrollLeft >= max && delta > 0;
+    if (atStart || atEnd) return;
+    el.scrollLeft += delta;
+    e.preventDefault();
+  };
+
+  const suppressClickIfDragged = () => dragRef.current.moved > 5;
 
   return (
     <div
@@ -212,10 +277,20 @@ function Filmstrip({
 
         <div
           ref={stripRef}
+          className="filmstrip-scroll"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          onLostPointerCapture={endDrag}
+          onWheel={onWheel}
           style={{
             overflowX: "auto",
             overflowY: "hidden",
             position: "relative",
+            cursor: "grab",
+            userSelect: "none",
+            touchAction: "pan-x",
             WebkitMaskImage:
               "linear-gradient(to right, #000 0, #000 calc(100% - 48px), transparent 100%)",
             maskImage:
@@ -236,12 +311,27 @@ function Filmstrip({
                 key={w.slug}
                 w={w}
                 active={i === activeIdx}
-                onHover={() => setActiveIdx(i)}
+                onHover={() => {
+                  if (!dragRef.current.active) setActiveIdx(i);
+                }}
+                suppressClickIfDragged={suppressClickIfDragged}
               />
             ))}
           </div>
         </div>
       </div>
+
+      <style>{`
+        /* Hide the native scrollbar while keeping the element scrollable. */
+        .filmstrip-scroll {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .filmstrip-scroll::-webkit-scrollbar { display: none; }
+
+        .filmstrip-scroll[data-dragging="true"] { cursor: grabbing; }
+        .filmstrip-scroll[data-dragging="true"] a { cursor: grabbing; }
+      `}</style>
     </div>
   );
 }
@@ -250,10 +340,12 @@ function FilmFrame({
   w,
   active,
   onHover,
+  suppressClickIfDragged,
 }: {
   w: Work;
   active: boolean;
   onHover: () => void;
+  suppressClickIfDragged: () => boolean;
 }) {
   const fg = w.tone === "dark" ? "#F3F5F7" : "#111214";
   return (
@@ -261,6 +353,14 @@ function FilmFrame({
       href={`/work/${w.slug}`}
       onMouseEnter={onHover}
       onFocus={onHover}
+      draggable={false}
+      onClick={(e) => {
+        if (suppressClickIfDragged()) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
+      onDragStart={(e) => e.preventDefault()}
       style={{
         borderRight: "1px solid var(--border-subtle)",
         padding: 14,
@@ -269,9 +369,10 @@ function FilmFrame({
         gap: 10,
         background: active ? "var(--bg-elevated)" : "transparent",
         transition: "background var(--dur-base) var(--ease-standard)",
-        cursor: "pointer",
         color: "inherit",
-      }}
+        userSelect: "none",
+        WebkitUserDrag: "none",
+      } as React.CSSProperties}
     >
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <Mono style={{ color: "var(--fg-tertiary)" }}>{w.n}</Mono>
