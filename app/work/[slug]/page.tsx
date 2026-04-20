@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { WORKS, getWork } from "@/content/works";
 import { Mono } from "@/components/mono";
 import { FrameGlyph, frameBackground } from "@/components/frame-glyph";
+import { HlsVideo } from "@/components/hls-video";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -98,35 +99,49 @@ export default async function CaseStudy({ params }: Params) {
               aspectRatio: "16 / 9",
               borderRadius: 8,
               overflow: "hidden",
-              background: frameBackground(w.tone),
+              background: w.video ? "#000" : frameBackground(w.tone),
               border: "1px solid var(--border-subtle)",
             }}
           >
-            <FrameGlyph work={w} />
-            {/* Protection gradient — the one acceptable gradient per brand. */}
-            <div
-              aria-hidden
-              style={{
-                position: "absolute",
-                inset: 0,
-                background:
-                  "linear-gradient(180deg, transparent 0%, rgba(17,18,20,0.18) 100%)",
-                pointerEvents: "none",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                left: 16,
-                bottom: 16,
-                display: "flex",
-                gap: 10,
-                alignItems: "baseline",
-              }}
-            >
-              <Mono style={{ color: "var(--fg-inverse)" }}>{w.n}</Mono>
-              <Mono style={{ color: "rgba(243,245,247,0.64)" }}>{w.kind}</Mono>
-            </div>
+            {w.video ? (
+              <HlsVideo
+                src={w.video}
+                playing
+                controls
+                fit="contain"
+                ariaLabel={`${w.title} — ${w.kind.toLowerCase()}`}
+              />
+            ) : (
+              <>
+                <FrameGlyph work={w} />
+                {/* Protection gradient — the one acceptable gradient per brand. */}
+                <div
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background:
+                      "linear-gradient(180deg, transparent 0%, rgba(17,18,20,0.18) 100%)",
+                    pointerEvents: "none",
+                  }}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 16,
+                    bottom: 16,
+                    display: "flex",
+                    gap: 10,
+                    alignItems: "baseline",
+                  }}
+                >
+                  <Mono style={{ color: "var(--fg-inverse)" }}>{w.n}</Mono>
+                  <Mono style={{ color: "rgba(243,245,247,0.64)" }}>
+                    {w.kind}
+                  </Mono>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </section>

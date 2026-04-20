@@ -5,6 +5,7 @@ import Link from "next/link";
 import { WORKS, type Work } from "@/content/works";
 import { Mono } from "./mono";
 import { FrameGlyph, frameBackground } from "./frame-glyph";
+import { HlsVideo } from "./hls-video";
 
 /**
  * Unusual hero: no headline. Giant wordmark at the top like a title page,
@@ -347,7 +348,9 @@ function FilmFrame({
   onHover: () => void;
   suppressClickIfDragged: () => boolean;
 }) {
-  const fg = w.tone === "dark" ? "#F3F5F7" : "#111214";
+  // Videos render on any imagery, so the badge needs the white treatment
+  // the vignette is there to support. Static placeholders keep tone-matched.
+  const fg = w.video ? "#F3F5F7" : w.tone === "dark" ? "#F3F5F7" : "#111214";
   return (
     <Link
       href={`/work/${w.slug}`}
@@ -389,7 +392,28 @@ function FilmFrame({
           overflow: "hidden",
         }}
       >
-        <FrameGlyph work={w} />
+        {w.video ? (
+          <HlsVideo
+            src={w.video}
+            playing={active}
+            ariaLabel={`${w.title} — motion preview`}
+          />
+        ) : (
+          <FrameGlyph work={w} />
+        )}
+        {/* Subtle vignette so the runtime badge stays legible over any footage. */}
+        {w.video && (
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(180deg, transparent 55%, rgba(0,0,0,0.35) 100%)",
+              pointerEvents: "none",
+            }}
+          />
+        )}
         {w.dur && (
           <div
             style={{

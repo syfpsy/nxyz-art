@@ -17,6 +17,10 @@ export type Work = {
   role: string[];     // disciplines applied
   summary: string;    // single-sentence editorial note
   body?: string;      // long-form case study (optional)
+  // HLS manifest URL (e.g. a Gumlet `main.m3u8`). When present, the frame
+  // and case-study hero render a muted, looped preview instead of the
+  // typographic placeholder.
+  video?: string;
 };
 
 export const WORKS: Work[] = [
@@ -35,6 +39,8 @@ export const WORKS: Work[] = [
       "A 41-second festival opener built around a single horizon line and a type system that reads like a dateline.",
     body:
       "Meridian screens each fall in a converted print shop. The brief: a title that doesn't announce itself. We settled on a horizon that holds across forty-one seconds while the year, city, and programme set in a wide mono beside it. No logo reveal. No music sting.",
+    video:
+      "https://video.gumlet.io/691b305b1eae6017804d722d/691bb39715bb3da8628c759c/main.m3u8",
   },
   {
     slug: "field",
@@ -61,6 +67,8 @@ export const WORKS: Work[] = [
     role: ["Identity", "Motion", "Creative direction"],
     summary:
       "An identity system for an independent record label, delivered with a 2:14 launch film.",
+    video:
+      "https://video.gumlet.io/691b305b1eae6017804d722d/691bb15feee8975bcee89df9/main.m3u8",
   },
   {
     slug: "ridgeline",
@@ -106,6 +114,8 @@ export const WORKS: Work[] = [
     role: ["Identity", "Motion"],
     summary:
       "A twelve-second motion identity for a maritime documentary strand.",
+    video:
+      "https://video.gumlet.io/691b305b1eae6017804d722d/691bb229eee8975bcee8a80b/main.m3u8",
   },
   {
     slug: "prism",
