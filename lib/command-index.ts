@@ -71,6 +71,27 @@ export function buildCommandIndex(): CommandItem[] {
       hint: "↗",
       href: `mailto:${STUDIO.email}`,
     },
+    {
+      id: "a-subscribe",
+      kind: "action",
+      label: "Subscribe to the studio's press sheet",
+      hint: "↓",
+      href: "/#subscribe",
+    },
+    {
+      id: "a-map",
+      kind: "action",
+      label: "Open studio location in Maps",
+      hint: "↗",
+      href: "/colophon#correspondence",
+    },
+    {
+      id: "a-admin",
+      kind: "action",
+      label: "Admin: edit works & products (dev only)",
+      hint: "/",
+      href: "/admin",
+    },
   ];
 
   return [...pages, ...products, ...works, ...experiments, ...writing, ...actions];

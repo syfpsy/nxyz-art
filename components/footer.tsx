@@ -44,7 +44,28 @@ export function Footer() {
           </div>
         </div>
 
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+            alignItems: "center",
+          }}
+        >
+          <a
+            href={`mailto:${STUDIO.email}`}
+            style={{
+              fontFamily: "var(--font-sans)",
+              fontSize: 15,
+              fontWeight: 500,
+              letterSpacing: "-0.01em",
+              color: "var(--fg-inverse)",
+              textDecoration: "none",
+            }}
+          >
+            {STUDIO.email}
+          </a>
           <span
             className="t-label"
             style={{
@@ -53,7 +74,7 @@ export function Footer() {
               textTransform: "uppercase",
             }}
           >
-            Set in Space Grotesk &amp; JetBrains Mono. Typeset with care. Printed on the web.
+            {STUDIO.address[0]} · {STUDIO.address[2] ?? STUDIO.address[1]}
           </span>
         </div>
 

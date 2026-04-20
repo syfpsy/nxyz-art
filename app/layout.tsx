@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     template: "%s · nxyz studio",
   },
   description:
-    "nxyz studio designs motion, systems, and signal. A small studio in Berlin, working across time zones by way of slow correspondence.",
+    "nxyz studio designs motion, systems, and signal. A small studio in İstanbul, working across time zones by way of slow correspondence.",
   applicationName: "nxyz studio",
   authors: [{ name: "nxyz studio" }],
   keywords: [

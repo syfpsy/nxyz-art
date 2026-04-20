@@ -4,15 +4,24 @@ export const STUDIO = {
   name: "nxyz studio",
   mark: "nxyz",
   domain: "nxyz.art",
-  email: "studio@nxyz.art",
+  email: "info@nxyz.art",
   established: 2022,
 
-  // Location — shown in the clock and the correspondence card.
-  city: "Berlin",
-  country: "DE",
-  coords: "52.520 N · 13.405 E",
-  address: ["Torstraße 172", "10115 Berlin, DE"],
-  timezone: "Europe/Berlin",
+  // Location — shown in the clock, correspondence card, and the studio map.
+  city: "İstanbul",
+  country: "TR",
+  coords: "40.9263 N · 29.1518 E",
+  lat: 40.9263,
+  lng: 29.1518,
+  address: [
+    "Ritim İstanbul AVM · A Blok 46/50",
+    "Cevizli Mah. Zühal Cad.",
+    "Maltepe / İstanbul, TR",
+  ],
+  // Single-line address used for map/search/directions query strings.
+  addressQuery:
+    "Ritim İstanbul AVM, Cevizli Mah. Zühal Cad. A Blok 46/50, Maltepe, İstanbul",
+  timezone: "Europe/Istanbul",
 
   // Studio status — "open for work" dot in the nav.
   status: {

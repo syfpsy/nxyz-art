@@ -1,6 +1,12 @@
 // Products — software and tools shipped by the studio.
 // Ongoing works, in contrast to `works.ts` (client projects) and
 // `experiments.ts` (sketches).
+//
+// Data lives in `products.json` so the (dev-only) /admin page can edit it
+// as plain JSON. The type definitions stay here alongside a typed loader
+// so the rest of the codebase keeps using `import { PRODUCTS }`.
+
+import productsData from "./products.json";
 
 export type ProductStatus =
   | "live"
@@ -31,100 +37,7 @@ export type Product = {
   embedBlocked?: boolean;
 };
 
-export const PRODUCTS: Product[] = [
-  {
-    slug: "perchlens",
-    n: "01",
-    name: "PerchLens",
-    domain: "perchlens.com",
-    url: "https://perchlens.com",
-    year: 2026,
-    tagline: "Analytics for the AI era.",
-    summary:
-      "A privacy-first analytics dashboard that tracks visitors arriving from ChatGPT, Claude, Perplexity, Gemini, and traditional search — in one surface. No cookies, no consent banners, and a GEO layer that recommends how to grow visibility in generative engines.",
-    disciplines: ["Web app", "Analytics", "Privacy", "GEO"],
-    status: "live",
-    statusNote: "Live · free tier",
-    accent: "#059669",
-    platforms: ["Web"],
-    features: [
-      "Unified traffic across AI + search",
-      "GEO recommendations for generative engines",
-      "Cookieless, no consent banner",
-      "Plausible / GA alternative",
-    ],
-    pricing: "Free tier · paid plans available",
-  },
-  {
-    slug: "perchi",
-    n: "02",
-    name: "Perchi",
-    domain: "perchi.net",
-    url: "https://perchi.net",
-    year: 2026,
-    tagline: "Voice rooms your crew will actually use.",
-    summary:
-      "A voice-first group room with video, screen share, a drawing canvas, watch-together, group chat, and a kanban board — all in every room. Drop in with a link. No download, no account. A native desktop app adds a system tray and global push-to-talk.",
-    disciplines: ["Voice", "Video", "Group tools", "Desktop"],
-    status: "public-beta",
-    statusNote: "Public beta · v0.3.4",
-    accent: "#E8734A",
-    platforms: ["Web", "Windows", "macOS", "Linux"],
-    features: [
-      "Voice, video & screen share",
-      "Whiteboard in every room",
-      "YouTube watch-together",
-      "Desktop tray · Ctrl+Space global PTT",
-    ],
-    pricing: "Free forever · Pro coming soon",
-  },
-  {
-    slug: "fontdash",
-    n: "03",
-    name: "FontDash",
-    domain: "fontdash.com",
-    url: "https://fontdash.com",
-    year: 2026,
-    tagline: "Your fonts, one place, zero friction.",
-    summary:
-      "A typographic workbench — browse 1,900+ families, pair them, test them in real layouts, and inspect glyphs. Four tools that answer typographic questions end-to-end: pairing, tester, similar-fonts, and a glyph inspector with metric guides.",
-    disciplines: ["Typography", "Web app", "Tools"],
-    status: "public-beta",
-    statusNote: "Public beta · free",
-    accent: "#6366F1",
-    platforms: ["Web", "Desktop (soon)"],
-    features: [
-      "1,900+ typefaces, one browser",
-      "Hand-picked pairings + algorithmic fallbacks",
-      "Weight/size/leading/tracking sliders",
-      "Glyph inspector with baseline & ascent guides",
-    ],
-    pricing: "Free while in beta",
-  },
-  {
-    slug: "refchi",
-    n: "04",
-    name: "Refchi",
-    domain: "refchi.com",
-    url: "https://refchi.com",
-    year: 2026,
-    tagline: "Your private creative library, beautifully organized.",
-    summary:
-      "A local-first creative asset manager for Windows. Collect images, fonts, colors, bookmarks, and references into folders, tags, and smart collections. On-device AI adds semantic search, OCR, and auto-tagging — nothing ever leaves your machine.",
-    disciplines: ["Desktop", "DAM", "Local-first", "On-device AI"],
-    status: "public-beta",
-    statusNote: "Public beta · Windows",
-    accent: "#0891B2",
-    platforms: ["Windows", "macOS (soon)"],
-    features: [
-      "50+ file types — images, fonts, PDFs, 3D, Lottie",
-      "On-device semantic search and OCR",
-      "Smart collections with rule-based filters",
-      "Private by default — no cloud, no account",
-    ],
-    pricing: "Free · no subscription",
-  },
-];
+export const PRODUCTS: Product[] = productsData as Product[];
 
 export function getProduct(slug: string): Product | undefined {
   return PRODUCTS.find((p) => p.slug === slug);

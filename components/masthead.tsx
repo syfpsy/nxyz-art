@@ -108,7 +108,7 @@ export function Masthead() {
               maxWidth: 640,
             }}
           >
-            Eight works on file. Four on rotation. Two in progress. One studio in Berlin,
+            Eight works on file. Four on rotation. Two in progress. One studio in İstanbul,
             working across time zones by way of slow correspondence.
           </p>
           <div

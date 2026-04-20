@@ -2,6 +2,7 @@ import { STUDIO } from "@/content/studio";
 import { Mono } from "./mono";
 import { Wordmark } from "./wordmark";
 import { Grain } from "./grain";
+import { StudioMap } from "./studio-map";
 
 /**
  * Contact / about CTA styled as a correspondence — a letter, not a form.
@@ -39,51 +40,66 @@ export function Correspondence({ withGrain = false }: Props) {
         }}
         className="corr-grid"
       >
-        {/* Address card */}
+        {/* Address card — wordmark + map + email. */}
         <div
           style={{
-            border: "1px solid var(--border-inverse)",
-            borderRadius: 4,
-            padding: 24,
             display: "flex",
             flexDirection: "column",
             gap: 14,
-            background: "#0F1115",
           }}
         >
           <div
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "baseline",
-            }}
-          >
-            <Mono style={{ color: "rgba(243,245,247,0.5)" }}>
-              CORRESPONDENCE · 04
-            </Mono>
-            <Mono style={{ color: "var(--accent)" }}>· OPEN</Mono>
-          </div>
-          <Wordmark variant="full" tone="dark" size={28} />
-          <div style={{ height: 1, background: "var(--border-inverse)" }} />
-          <div
-            style={{
+              border: "1px solid var(--border-inverse)",
+              borderRadius: 4,
+              padding: 20,
               display: "flex",
               flexDirection: "column",
-              gap: 8,
-              fontFamily: "var(--font-mono)",
-              fontSize: 11.5,
-              color: "rgba(243,245,247,0.56)",
-              letterSpacing: "0.02em",
+              gap: 12,
+              background: "#0F1115",
             }}
           >
-            {STUDIO.address.map((l) => (
-              <div key={l}>{l}</div>
-            ))}
-            <div style={{ color: "var(--fg-inverse)", marginTop: 8 }}>{STUDIO.email}</div>
-            <div>
-              {STUDIO.domain} · est. {STUDIO.established}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+              }}
+            >
+              <Mono style={{ color: "rgba(243,245,247,0.5)" }}>
+                CORRESPONDENCE · 04
+              </Mono>
+              <Mono style={{ color: "var(--accent)" }}>· OPEN</Mono>
+            </div>
+            <Wordmark variant="full" tone="dark" size={26} />
+            <div style={{ height: 1, background: "var(--border-inverse)" }} />
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}
+            >
+              <a
+                href={`mailto:${STUDIO.email}`}
+                style={{
+                  color: "var(--fg-inverse)",
+                  fontFamily: "var(--font-sans)",
+                  fontSize: 17,
+                  fontWeight: 500,
+                  letterSpacing: "-0.01em",
+                  textDecoration: "none",
+                }}
+              >
+                {STUDIO.email}
+              </a>
+              <Mono style={{ color: "rgba(243,245,247,0.5)" }}>
+                {STUDIO.domain} · est. {STUDIO.established}
+              </Mono>
             </div>
           </div>
+
+          <StudioMap tone="inverse" />
         </div>
 
         {/* Letter */}
