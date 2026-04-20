@@ -54,6 +54,8 @@ export const WORKS: Work[] = [
       "A five-weight geometric sans drawn for a research lab, tuned for long reading at small sizes.",
     body:
       "Field was commissioned for a quarterly research memo that lives in print and on screen. Five weights, one italic, tabular figures throughout. The brief asked for 'authoritative, never shouty' — so the caps height is low and the x-height is generous.",
+    video:
+      "https://video.gumlet.io/691b305b1eae6017804d722d/691b885315bb3da86289b804/main.m3u8",
   },
   {
     slug: "cassette",
@@ -80,6 +82,8 @@ export const WORKS: Work[] = [
     role: ["Interface", "Prototype", "Systems"],
     summary:
       "A design language and component library for a climate-modelling product used by public-sector planners.",
+    video:
+      "https://video.gumlet.io/691b305b1eae6017804d722d/691b5fe715bb3da86286df49/main.m3u8",
   },
   {
     slug: "orbit",
@@ -91,6 +95,8 @@ export const WORKS: Work[] = [
     role: ["Interactive", "Motion"],
     summary:
       "A long-scroll essay about satellite graveyards, paced so the reader never loses the horizon.",
+    video:
+      "https://video.gumlet.io/691b305b1eae6017804d722d/691bb396eee8975bcee8bbc0/main.m3u8",
   },
   {
     slug: "vellum",
@@ -102,6 +108,8 @@ export const WORKS: Work[] = [
     role: ["Editorial", "Web"],
     summary:
       "An editorial system for a bi-annual design journal — print-first, with a restrained web companion.",
+    video:
+      "https://video.gumlet.io/691b305b1eae6017804d722d/691b6c2b15bb3da86287ed65/main.m3u8",
   },
   {
     slug: "harbour",
@@ -127,6 +135,8 @@ export const WORKS: Work[] = [
     role: ["Experiment", "Interface"],
     summary:
       "An early experiment in chromatic type rendering — a private sketch that became the studio's first public release.",
+    video:
+      "https://video.gumlet.io/691b305b1eae6017804d722d/691bb14515bb3da8628c5718/main.m3u8",
   },
 ];
 

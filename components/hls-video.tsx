@@ -47,16 +47,23 @@ export function HlsVideo({
 }: HlsVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [ready, setReady] = useState(false);
+  // The stream is only attached after the parent first asks for playback.
+  // This keeps eight filmstrip frames from kicking off eight manifest fetches
+  // on mount — only the frame that actually plays pays the network cost.
+  const [armed, setArmed] = useState(playing);
+
+  useEffect(() => {
+    if (playing && !armed) setArmed(true);
+  }, [playing, armed]);
 
   // Attach the manifest to the <video>. We prefer the browser's native HLS
   // support when available; otherwise we spin up an hls.js instance.
   useEffect(() => {
+    if (!armed) return;
     const video = videoRef.current;
     if (!video) return;
 
     let cancelled = false;
-    // Using `unknown` keeps us free of an `any` while the type is only known
-    // after the dynamic import resolves.
     let hls: { destroy: () => void } | null = null;
 
     const canPlayNative = video.canPlayType("application/vnd.apple.mpegurl");
@@ -71,12 +78,11 @@ export function HlsVideo({
     }
 
     // Dynamic import so hls.js only ships to browsers that need it, and only
-    // when a page actually mounts a player.
+    // when a player is actually requested to play.
     import("hls.js").then((mod) => {
       if (cancelled) return;
       const Hls = mod.default;
       if (!Hls.isSupported()) {
-        // Last-ditch: try setting the src directly — some browsers will cope.
         video.src = src;
         setReady(true);
         return;
@@ -102,7 +108,7 @@ export function HlsVideo({
         hls = null;
       }
     };
-  }, [src]);
+  }, [src, armed]);
 
   // Drive play/pause from the `playing` prop. `.play()` returns a promise;
   // ignore rejections (autoplay block, user gesture required, unmount races).
