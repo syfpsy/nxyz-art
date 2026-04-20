@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 64" width="160" height="64">
+  <title>nxyz short mark</title>
+  <style>
+    .m { font-family: "Space Grotesk", "Inter Tight", sans-serif; font-weight: 600; font-size: 48px; letter-spacing: -1.9px; fill: #111214; }
+  </style>
+  <text class="m" x="0" y="46">nxyz</text>
+  <circle cx="138" cy="16" r="4" fill="#6D5EF7"/>
+</svg>
