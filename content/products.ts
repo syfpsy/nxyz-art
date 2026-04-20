@@ -77,9 +77,6 @@ export const PRODUCTS: Product[] = [
       "Desktop tray · Ctrl+Space global PTT",
     ],
     pricing: "Free forever · Pro coming soon",
-    // perchi.net sends X-Frame-Options: SAMEORIGIN — render the designed
-    // fallback immediately instead of an empty frame.
-    embedBlocked: true,
   },
   {
     slug: "fontdash",
