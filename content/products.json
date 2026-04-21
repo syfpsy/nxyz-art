@@ -86,5 +86,49 @@
       "Private by default — no cloud, no account"
     ],
     "pricing": "Free · no subscription"
+  },
+  {
+    "slug": "mechremix",
+    "n": "05",
+    "name": "MechRemix",
+    "domain": "mechremix.com",
+    "url": "https://mechremix.com",
+    "year": 2026,
+    "tagline": "Concepts worth prototyping.",
+    "summary": "A game-design workbench that fuses proven mechanics from a source library, scores novelty and clone risk, and turns ideas into prototype-ready briefs with mockups — in minutes instead of weeks. Browse concepts, shortlist winners, and export briefs as Markdown or JSON.",
+    "disciplines": ["Game design", "Web app", "Prototyping", "AI-assisted"],
+    "status": "public-beta",
+    "statusNote": "Public beta · library + generator",
+    "accent": "#C2410C",
+    "platforms": ["Web"],
+    "features": [
+      "Source-game library with mechanic tagging",
+      "Novelty & clone-risk scoring per concept",
+      "Batch random-fusion runs with mockups",
+      "Export to .md / .json"
+    ],
+    "pricing": "Free while in beta"
+  },
+  {
+    "slug": "atlas-anatolia",
+    "n": "06",
+    "name": "Atlas Anatolia",
+    "domain": "atlasanatolia.com",
+    "url": "https://atlasanatolia.com",
+    "year": 2026,
+    "tagline": "Interactive map of ancient Anatolia.",
+    "summary": "An explorable map of 125 archaeological sites across Anatolia — from Neolithic settlements to medieval monasteries — with period filters, civilization tags, and deep dives on featured places like Ephesus. Built for curious readers and travelers who want context, not a textbook wall of text.",
+    "disciplines": ["Web app", "Maps", "History", "Education"],
+    "status": "live",
+    "statusNote": "Live · 125 sites",
+    "accent": "#B45309",
+    "platforms": ["Web"],
+    "features": [
+      "125 sites with map + filters",
+      "Civilization & period taxonomy",
+      "Featured site stories",
+      "Newsletter for monthly stories"
+    ],
+    "pricing": "Free to explore"
   }
 ]
