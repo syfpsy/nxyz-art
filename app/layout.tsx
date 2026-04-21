@@ -67,6 +67,10 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        {/* Video embeds + map iframe – warm connections early (no feature loss). */}
+        <link rel="preconnect" href="https://video.gumlet.io" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://gumlet.tv" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://www.openstreetmap.org" />
         <ThemeScript />
       </head>
       <body>

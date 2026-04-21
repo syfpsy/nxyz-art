@@ -25,8 +25,8 @@ export function ProductsGrid() {
         }}
       >
         <SectionHeader index="B" meta="SHIPPING">
-          Four tools made in the studio &mdash; running in public, charging
-          little or nothing, built to stand on their own.
+          Software from the studio &mdash; running in public, charging little or
+          nothing, built to stand on their own.
         </SectionHeader>
 
         <div
@@ -37,8 +37,8 @@ export function ProductsGrid() {
             gap: 20,
           }}
         >
-          {PRODUCTS.map((p) => (
-            <ProductCard key={p.slug} p={p} />
+          {PRODUCTS.map((p, i) => (
+            <ProductCard key={p.slug} p={p} staggerFrames={i} />
           ))}
         </div>
 
@@ -52,7 +52,13 @@ export function ProductsGrid() {
   );
 }
 
-function ProductCard({ p }: { p: Product }) {
+function ProductCard({
+  p,
+  staggerFrames,
+}: {
+  p: Product;
+  staggerFrames: number;
+}) {
   return (
     <Link
       href={`/products/${p.slug}`}
@@ -66,7 +72,7 @@ function ProductCard({ p }: { p: Product }) {
         minWidth: 0,
       }}
     >
-      <BrowserFrame product={p} variant="card" />
+      <BrowserFrame product={p} variant="card" staggerFrames={staggerFrames} />
 
       <div style={{ padding: "2px 2px 0", minWidth: 0 }}>
         <div

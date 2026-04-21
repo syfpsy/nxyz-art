@@ -14,6 +14,12 @@ type BrowserFrameProps = {
   aspect?: string;
   /** Target viewport width the iframe should render at before scaling. */
   viewportWidth?: number;
+  /**
+   * Card-only: after the card enters the viewport, wait this many animation
+   * frames before mounting the iframe — spreads main-thread work when many
+   * product cards come in view at once.
+   */
+  staggerFrames?: number;
 };
 
 /**
@@ -30,6 +36,7 @@ export function BrowserFrame({
   // Cards render at a wide "overview" viewport and scale down hard, so the
   // embedded site appears roughly half size — more content, denser cards.
   viewportWidth = variant === "card" ? 2560 : 1440,
+  staggerFrames = 0,
 }: BrowserFrameProps) {
   const blocked = product.embedBlocked ?? false;
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -68,11 +75,27 @@ export function BrowserFrame({
       window.matchMedia("(prefers-reduced-data: reduce)").matches;
     if (reducedData) return;
 
+    /** n=0: run in same task; n=1: one rAF; n=2: two rAFs; etc. */
+    const afterRafChain = (n: number, fn: () => void) => {
+      if (n <= 0) {
+        fn();
+        return;
+      }
+      const tick = (left: number) => {
+        if (left === 0) {
+          fn();
+          return;
+        }
+        requestAnimationFrame(() => tick(left - 1));
+      };
+      requestAnimationFrame(() => tick(n - 1));
+    };
+
     const io = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
-            setMounted(true);
+            afterRafChain(staggerFrames, () => setMounted(true));
             io.disconnect();
             break;
           }
@@ -82,7 +105,7 @@ export function BrowserFrame({
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [variant, mounted, blocked]);
+  }, [variant, mounted, blocked, staggerFrames]);
 
   return (
     <div

@@ -37,9 +37,10 @@ export function FrameGlyph({ work, size = "fill" }: { work: Work; size?: "fill" 
     case "02":
       return (
         <svg viewBox={viewBox} style={style}>
-          {[300, 400, 500, 600, 700].map((w, i) => (
+          {/* Only 400/500/600 are loaded in next/font to keep downloads small */}
+          {[400, 500, 600, 500, 400].map((w, i) => (
             <text
-              key={w}
+              key={`${w}-${i}`}
               x="16"
               y={30 + i * 22}
               fontSize="20"
