@@ -7,7 +7,7 @@ import { Mono } from "./mono";
 
 /**
  * /admin editor. A single surface for works and products, backed by the
- * dev-only /api/admin/* routes. Edits live in state until saved; an
+ * session-gated /api/admin/* routes. Edits live in state until saved; an
  * "unsaved changes" banner pins to the bottom so the writer can save or
  * discard without scrolling.
  */
@@ -19,6 +19,11 @@ type LoadedData = {
   products: Product[];
 };
 
+type Session = {
+  email: string;
+  env: "dev" | "prod";
+};
+
 const WORK_TONES: WorkTone[] = ["light", "soft", "dark", "ui"];
 const PRODUCT_STATUSES: ProductStatus[] = [
   "live",
@@ -27,7 +32,281 @@ const PRODUCT_STATUSES: ProductStatus[] = [
   "coming-soon",
 ];
 
-export function AdminEditor() {
+// =============================================================================
+// Shell — session probe + login form OR the editor.
+// =============================================================================
+
+type ShellState =
+  | { phase: "probing" }
+  | { phase: "unauth" }
+  | { phase: "authed"; session: Session }
+  | { phase: "error"; error: string };
+
+export function AdminShell() {
+  const [state, setState] = useState<ShellState>({ phase: "probing" });
+
+  const probe = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/session", { cache: "no-store" });
+      if (res.status === 401) {
+        setState({ phase: "unauth" });
+        return;
+      }
+      const json = (await res.json()) as {
+        ok: boolean;
+        email?: string;
+        env?: "dev" | "prod";
+        error?: string;
+      };
+      if (!json.ok || !json.email) {
+        setState({ phase: "unauth" });
+        return;
+      }
+      setState({
+        phase: "authed",
+        session: { email: json.email, env: json.env ?? "prod" },
+      });
+    } catch (err) {
+      setState({ phase: "error", error: (err as Error).message });
+    }
+  }, []);
+
+  useEffect(() => {
+    probe();
+  }, [probe]);
+
+  const logout = async () => {
+    await fetch("/api/admin/logout", { method: "POST" }).catch(() => undefined);
+    setState({ phase: "unauth" });
+  };
+
+  return (
+    <>
+      <AdminHeader
+        state={state}
+        onLogout={logout}
+      />
+      {state.phase === "probing" && <LoadingPanel />}
+      {state.phase === "unauth" && <LoginForm onLoggedIn={probe} />}
+      {state.phase === "error" && <ErrorPanel>{state.error}</ErrorPanel>}
+      {state.phase === "authed" && <AdminEditor session={state.session} />}
+    </>
+  );
+}
+
+function AdminHeader({
+  state,
+  onLogout,
+}: {
+  state: ShellState;
+  onLogout: () => void;
+}) {
+  const session = state.phase === "authed" ? state.session : null;
+  return (
+    <header
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "baseline",
+        borderBottom: "1px solid var(--fg-primary)",
+        paddingBottom: 14,
+        marginBottom: 32,
+        flexWrap: "wrap",
+        gap: 12,
+      }}
+    >
+      <div>
+        <span className="t-label" style={{ color: "var(--fg-tertiary)" }}>
+          STUDIO · MAINTENANCE · {session?.env === "dev" ? "LOCAL" : "LIVE"}
+        </span>
+        <h1
+          className="t-h1"
+          style={{
+            fontWeight: 500,
+            marginTop: 6,
+            letterSpacing: "-0.02em",
+          }}
+        >
+          Content console
+        </h1>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          whiteSpace: "nowrap",
+        }}
+      >
+        {session ? (
+          <>
+            <Mono
+              style={{
+                color:
+                  session.env === "dev" ? "var(--accent)" : "var(--fg-secondary)",
+              }}
+            >
+              {session.env === "dev"
+                ? "● DEV · DIRECT WRITES"
+                : "◉ LIVE · GITHUB COMMIT"}
+            </Mono>
+            <Mono style={{ color: "var(--fg-tertiary)" }}>
+              ◎ {session.email}
+            </Mono>
+            <button
+              type="button"
+              onClick={onLogout}
+              style={{
+                border: "1px solid var(--border-subtle)",
+                background: "transparent",
+                color: "var(--fg-secondary)",
+                padding: "6px 12px",
+                borderRadius: 999,
+                fontFamily: "var(--font-sans)",
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              Log out
+            </button>
+          </>
+        ) : (
+          <Mono style={{ color: "var(--fg-tertiary)" }}>○ SIGNED OUT</Mono>
+        )}
+      </div>
+    </header>
+  );
+}
+
+function LoginForm({ onLoggedIn }: { onLoggedIn: () => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState<"idle" | "submitting" | "err">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus("submitting");
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !json.ok) {
+        setStatus("err");
+        setError(json.error ?? "Login failed.");
+        return;
+      }
+      onLoggedIn();
+    } catch (err) {
+      setStatus("err");
+      setError((err as Error).message);
+    }
+  };
+
+  return (
+    <form
+      onSubmit={submit}
+      style={{
+        maxWidth: 420,
+        margin: "48px auto 0",
+        display: "flex",
+        flexDirection: "column",
+        gap: 18,
+        border: "1px solid var(--border-subtle)",
+        borderRadius: 12,
+        padding: 28,
+        background: "var(--bg-elevated)",
+      }}
+    >
+      <div>
+        <Mono style={{ color: "var(--fg-tertiary)" }}>LOGIN · 01</Mono>
+        <h2
+          style={{
+            fontFamily: "var(--font-sans)",
+            fontWeight: 500,
+            fontSize: 22,
+            letterSpacing: "-0.02em",
+            marginTop: 4,
+          }}
+        >
+          Sign in to edit.
+        </h2>
+      </div>
+      <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <Mono style={{ color: "var(--fg-tertiary)" }}>EMAIL</Mono>
+        <input
+          type="email"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          disabled={status === "submitting"}
+          style={loginInputStyle}
+        />
+      </label>
+      <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <Mono style={{ color: "var(--fg-tertiary)" }}>PASSWORD</Mono>
+        <input
+          type="password"
+          autoComplete="current-password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          disabled={status === "submitting"}
+          style={loginInputStyle}
+        />
+      </label>
+      <button
+        type="submit"
+        disabled={status === "submitting"}
+        style={{
+          background: "var(--fg-primary)",
+          color: "var(--bg-base)",
+          border: 0,
+          padding: "12px 16px",
+          borderRadius: 8,
+          fontFamily: "var(--font-sans)",
+          fontSize: 15,
+          fontWeight: 500,
+          cursor: status === "submitting" ? "default" : "pointer",
+        }}
+      >
+        {status === "submitting" ? "Signing in…" : "Sign in ↵"}
+      </button>
+      {error && (
+        <Mono style={{ color: "var(--status-urgent, #C73333)" }}>
+          ! {error}
+        </Mono>
+      )}
+      <Mono style={{ color: "var(--fg-tertiary)" }}>
+        SESSION · 30 DAYS · HTTPONLY COOKIE
+      </Mono>
+    </form>
+  );
+}
+
+const loginInputStyle: React.CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "10px 12px",
+  border: "1px solid var(--border-subtle)",
+  borderRadius: 8,
+  background: "var(--bg-base)",
+  color: "var(--fg-primary)",
+  fontFamily: "var(--font-sans)",
+  fontSize: 15,
+  outline: "none",
+};
+
+// =============================================================================
+// Editor — the original CRUD surface, now session-aware.
+// =============================================================================
+
+function AdminEditor({ session }: { session: Session }) {
   const [tab, setTab] = useState<Tab>("works");
   const [data, setData] = useState<LoadedData | null>(null);
   const [baseline, setBaseline] = useState<LoadedData | null>(null);
@@ -70,17 +349,38 @@ export function AdminEditor() {
     return JSON.stringify(data) !== JSON.stringify(baseline);
   }, [data, baseline]);
 
+  const [lastReceipt, setLastReceipt] = useState<{
+    mode: "local" | "github";
+    message: string;
+    commitUrl?: string;
+  } | null>(null);
+
   const save = useCallback(async () => {
     if (!data) return;
+    // In production, confirm — a save costs a Vercel build. We don't want
+    // muscle-memory ⌘S to burn build minutes.
+    if (session.env === "prod") {
+      const ok = window.confirm(
+        "Save to live site?\n\nThis commits works.json and products.json to main and triggers a Vercel rebuild (~30s). Continue?",
+      );
+      if (!ok) return;
+    }
     setSaveStatus("saving");
     setSaveError(null);
+    setLastReceipt(null);
     try {
       const res = await fetch("/api/admin/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      const json = (await res.json()) as { ok: boolean; error?: string };
+      const json = (await res.json()) as {
+        ok: boolean;
+        error?: string;
+        mode?: "local" | "github";
+        message?: string;
+        commitUrl?: string;
+      };
       if (!res.ok || !json.ok) {
         setSaveStatus("err");
         setSaveError(json.error ?? "Save failed.");
@@ -88,12 +388,19 @@ export function AdminEditor() {
       }
       setSaveStatus("ok");
       setBaseline(JSON.parse(JSON.stringify(data)) as LoadedData);
-      window.setTimeout(() => setSaveStatus("idle"), 1600);
+      if (json.mode) {
+        setLastReceipt({
+          mode: json.mode,
+          message: json.message ?? "Saved.",
+          commitUrl: json.commitUrl,
+        });
+      }
+      window.setTimeout(() => setSaveStatus("idle"), 1800);
     } catch (err) {
       setSaveStatus("err");
       setSaveError((err as Error).message);
     }
-  }, [data]);
+  }, [data, session.env]);
 
   // Keep Ctrl/Cmd+S behaviour — muscle memory saves.
   useEffect(() => {
@@ -122,6 +429,13 @@ export function AdminEditor() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      {lastReceipt && (
+        <ReceiptBanner
+          receipt={lastReceipt}
+          onDismiss={() => setLastReceipt(null)}
+        />
+      )}
+
       <TabBar tab={tab} setTab={setTab} counts={data} />
 
       {tab === "works" && (
@@ -141,9 +455,101 @@ export function AdminEditor() {
         dirty={dirty}
         status={saveStatus}
         error={saveError}
+        env={session.env}
         onSave={save}
         onDiscard={discard}
       />
+    </div>
+  );
+}
+
+function ReceiptBanner({
+  receipt,
+  onDismiss,
+}: {
+  receipt: {
+    mode: "local" | "github";
+    message: string;
+    commitUrl?: string;
+  };
+  onDismiss: () => void;
+}) {
+  const isProd = receipt.mode === "github";
+  return (
+    <div
+      role="status"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        padding: "14px 18px",
+        borderRadius: 10,
+        background: isProd ? "#0F1115" : "var(--bg-elevated)",
+        color: isProd ? "#F3F5F7" : "var(--fg-primary)",
+        border: `1px solid ${isProd ? "#22252C" : "var(--border-subtle)"}`,
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          background: "var(--accent)",
+          boxShadow: "0 0 0 4px rgba(93, 63, 211, 0.22)",
+          flexShrink: 0,
+        }}
+      />
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <Mono style={{ color: isProd ? "rgba(243,245,247,0.62)" : "var(--fg-tertiary)" }}>
+          {isProd ? "DISPATCHED · GITHUB" : "SAVED · LOCAL"}
+        </Mono>
+        <span
+          style={{
+            fontFamily: "var(--font-sans)",
+            fontSize: 14,
+            letterSpacing: "-0.005em",
+          }}
+        >
+          {receipt.message}
+        </span>
+      </div>
+      <div style={{ flex: 1 }} />
+      {receipt.commitUrl && (
+        <a
+          href={receipt.commitUrl}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 11,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: isProd ? "#F3F5F7" : "var(--fg-primary)",
+            textDecoration: "none",
+            padding: "6px 10px",
+            border: `1px solid ${isProd ? "rgba(243,245,247,0.22)" : "var(--border-subtle)"}`,
+            borderRadius: 999,
+          }}
+        >
+          ↗ commit
+        </a>
+      )}
+      <button
+        type="button"
+        onClick={onDismiss}
+        style={{
+          background: "transparent",
+          border: 0,
+          color: isProd ? "rgba(243,245,247,0.62)" : "var(--fg-tertiary)",
+          cursor: "pointer",
+          fontFamily: "var(--font-mono)",
+          fontSize: 14,
+        }}
+        aria-label="Dismiss"
+      >
+        ×
+      </button>
     </div>
   );
 }
@@ -207,12 +613,14 @@ function SaveBar({
   dirty,
   status,
   error,
+  env,
   onSave,
   onDiscard,
 }: {
   dirty: boolean;
   status: "idle" | "saving" | "ok" | "err";
   error: string | null;
+  env: "dev" | "prod";
   onSave: () => void;
   onDiscard: () => void;
 }) {
@@ -252,11 +660,15 @@ function SaveBar({
           }}
         >
           {status === "saving"
-            ? "SAVING…"
+            ? env === "prod"
+              ? "COMMITTING…"
+              : "SAVING…"
             : status === "err"
               ? "! ERROR"
               : status === "ok"
-                ? "✓ SAVED"
+                ? env === "prod"
+                  ? "✓ DISPATCHED"
+                  : "✓ SAVED"
                 : dirty
                   ? "● UNSAVED CHANGES"
                   : "○ CLEAN"}
@@ -310,7 +722,7 @@ function SaveBar({
             cursor: dirty ? "pointer" : "default",
           }}
         >
-          Save to disk ⌘S
+          {env === "prod" ? "Commit to live ⌘S" : "Save to disk ⌘S"}
         </button>
       </div>
     </div>

@@ -1,21 +1,19 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { SESSION_COOKIE, verifySession } from "@/lib/auth";
 
-/**
- * Dev-only admin data source.
- *
- * In production this route refuses to run — there's no durable filesystem
- * on Vercel's serverless functions anyway, and we don't want an admin
- * endpoint to sit exposed on the public site. The gate is also enforced
- * in the /admin page's UI.
- */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function isDev(): boolean {
-  return process.env.NODE_ENV !== "production";
-}
+/**
+ * Read current works + products JSON from the deployed filesystem.
+ *
+ * Works in production because Vercel ships the content JSON with the
+ * bundle, and the serverless runtime can read its own files. Writes go
+ * through a separate path (see `save/route.ts`).
+ */
 
 async function readJson(file: string): Promise<unknown> {
   const full = path.join(process.cwd(), "content", file);
@@ -24,14 +22,19 @@ async function readJson(file: string): Promise<unknown> {
 }
 
 export async function GET() {
-  if (!isDev()) {
+  const store = await cookies();
+  const token = store.get(SESSION_COOKIE)?.value;
+
+  let session = null;
+  try {
+    session = verifySession(token);
+  } catch {
+    session = null;
+  }
+  if (!session) {
     return NextResponse.json(
-      {
-        ok: false,
-        error:
-          "Admin is available only in development. Run `npm run dev` locally.",
-      },
-      { status: 403 },
+      { ok: false, error: "Unauthorized." },
+      { status: 401 },
     );
   }
 
@@ -40,7 +43,12 @@ export async function GET() {
       readJson("works.json"),
       readJson("products.json"),
     ]);
-    return NextResponse.json({ ok: true, works, products });
+    return NextResponse.json({
+      ok: true,
+      works,
+      products,
+      env: process.env.NODE_ENV !== "production" ? "dev" : "prod",
+    });
   } catch (err) {
     return NextResponse.json(
       {
