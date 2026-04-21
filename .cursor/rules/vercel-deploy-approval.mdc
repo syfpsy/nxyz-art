@@ -1,0 +1,33 @@
+---
+description: Never auto-deploy; Vercel build minutes are paid — ask before any push or deploy.
+alwaysApply: true
+---
+
+# Vercel and deploy economy
+
+The project **auto-deploys on every push to `main`** (GitHub → Vercel).  
+**Build minutes cost money.** Treat every deployment as opt-in.
+
+## Non-negotiable
+
+- **Do not auto-deploy.** Never run `git push`, `git push origin main`, or any remote update that would trigger Vercel **unless the user explicitly asks in this conversation** (e.g. "push", "deploy", "go live", "ship it", "push to main").
+- **Always ask first** before a deploy or push. If work is done locally, **stop and ask** — do not push as a "default" or to "save the user a step."
+- **Do not** run `vercel`, `vercel deploy`, `vercel --prod`, or any Vercel CLI command that creates a deployment without the same **explicit** approval.
+- **Be economical:** prefer `npm run build` and `tsc` locally; avoid repeated pushes; batch changes into one push when the user is ready, instead of many small deploys.
+
+## Always allowed (no Vercel cost)
+
+- `npm run build`, `npm run lint`, `npm run typecheck` locally
+- `git add`, `git commit`, `git status`, `git diff`, `git log`
+- `npm run dev` and local testing
+
+## When work is done
+
+1. Summarize what changed.
+2. Give the local commit hash if you committed.
+3. **Ask** whether they want to push to `main` (and note that it will use Vercel build minutes).
+
+## Approvals
+
+- **Each** push to a branch that deploys needs **fresh** user approval, unless their message clearly authorizes a push/deploy right then.
+- If they say "never auto deploy" or "ask first always," treat that as a standing requirement: **still confirm** before the first push after that when deploying would be the natural next step.
