@@ -1,0 +1,40 @@
+[
+  {
+    "slug": "founding",
+    "n": "01",
+    "name": "Founding partner",
+    "role": "Motion · type · systems",
+    "tagline": "A template you can copy — name, headshot, and work links are all editable in people.json.",
+    "bio": [
+      "Each entry here becomes a public profile at /people/[slug] — a personal portfolio that stays visually tied to the main site: same type, same surface logic, but room for a face and a line of work that is yours, not the studio’s alone.",
+      "Add a headshot to public/people/founding.jpg (optional). Duplicate the JSON object in people.json for every collaborator, then wire workSlugs to studio projects they touched."
+    ],
+    "photoSrc": null,
+    "links": [
+      { "label": "nxyz.art", "href": "https://nxyz.art" }
+    ],
+    "workSlugs": ["meridian", "field"],
+    "otherWork": []
+  },
+  {
+    "slug": "collaborator",
+    "n": "02",
+    "name": "Collaborator slot",
+    "role": "Product · research",
+    "tagline": "Second profile to show a grid. Replace the copy and add your own slug.",
+    "bio": [
+      "New-era studios are networks: a core team plus people who float in for releases, research, and tools. This block is a placeholder — swap the name, photo, and links when you are ready."
+    ],
+    "photoSrc": null,
+    "links": [],
+    "workSlugs": ["cassette"],
+    "otherWork": [
+      {
+        "title": "Lab note (example link)",
+        "href": "/lab/001-dateline",
+        "year": "2024",
+        "note": "Use otherWork for off-archive links — lab, writing, or external URLs."
+      }
+    ]
+  }
+]

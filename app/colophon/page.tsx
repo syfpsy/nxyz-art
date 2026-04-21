@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { STUDIO } from "@/content/studio";
 import { Mono } from "@/components/mono";
 import { Correspondence } from "@/components/correspondence";
@@ -31,8 +32,13 @@ export default function Colophon() {
           >
             nxyz studio is a small practice working across motion, systems, and
             digital products. It was established in {STUDIO.established} and
-            operates out of {STUDIO.city}. This page reads like the back of a book
-            &mdash; what the studio is made of, and what it uses to work.
+            operates out of {STUDIO.city}.{" "}
+            <Link href="/people" className="link" style={{ color: "var(--fg-secondary)" }}>
+              People
+            </Link>{" "}
+            working with the volume have their own case-adjacent profiles; this
+            page reads like the back of a book &mdash; what the studio is made
+            of, and what it uses to work.
           </p>
         </div>
       </section>

@@ -3,12 +3,21 @@ import { WORKS } from "@/content/works";
 import { PRODUCTS } from "@/content/products";
 import { EXPERIMENTS } from "@/content/experiments";
 import { WRITING } from "@/content/writing";
+import { PEOPLE } from "@/content/people";
 
 const BASE = "https://nxyz.art";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
-  const staticPages = ["", "/work", "/products", "/lab", "/writing", "/colophon"];
+  const staticPages = [
+    "",
+    "/work",
+    "/products",
+    "/people",
+    "/lab",
+    "/writing",
+    "/colophon",
+  ];
 
   return [
     ...staticPages.map((p) => ({
@@ -40,6 +49,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(w.date),
       changeFrequency: "yearly" as const,
       priority: 0.5,
+    })),
+    ...PEOPLE.map((p) => ({
+      url: `${BASE}/people/${p.slug}`,
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: 0.55,
     })),
   ];
 }

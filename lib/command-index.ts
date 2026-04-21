@@ -3,6 +3,7 @@ import { EXPERIMENTS } from "@/content/experiments";
 import { WRITING } from "@/content/writing";
 import { PRODUCTS } from "@/content/products";
 import { STUDIO } from "@/content/studio";
+import { PEOPLE } from "@/content/people";
 
 export type CommandKind =
   | "page"
@@ -10,6 +11,7 @@ export type CommandKind =
   | "product"
   | "lab"
   | "writing"
+  | "person"
   | "action";
 
 export type CommandItem = {
@@ -26,6 +28,7 @@ export function buildCommandIndex(): CommandItem[] {
     { id: "p-home", kind: "page", label: "Go to: index", href: "/" },
     { id: "p-work", kind: "page", label: "Go to: work archive", href: "/work" },
     { id: "p-products", kind: "page", label: "Go to: the shop", href: "/products" },
+    { id: "p-people", kind: "page", label: "Go to: people (profiles)", href: "/people" },
     { id: "p-lab", kind: "page", label: "Go to: experiments lab", href: "/lab" },
     { id: "p-writing", kind: "page", label: "Go to: writing", href: "/writing" },
     { id: "p-colophon", kind: "page", label: "Go to: colophon", href: "/colophon" },
@@ -63,6 +66,14 @@ export function buildCommandIndex(): CommandItem[] {
     href: `/writing/${w.slug}`,
   }));
 
+  const people = PEOPLE.map<CommandItem>((p) => ({
+    id: `who-${p.slug}`,
+    kind: "person",
+    label: `Meet: ${p.name} — ${p.role}`,
+    hint: p.n,
+    href: `/people/${p.slug}`,
+  }));
+
   const actions: CommandItem[] = [
     {
       id: "a-mail",
@@ -94,5 +105,13 @@ export function buildCommandIndex(): CommandItem[] {
     },
   ];
 
-  return [...pages, ...products, ...works, ...experiments, ...writing, ...actions];
+  return [
+    ...pages,
+    ...people,
+    ...products,
+    ...works,
+    ...experiments,
+    ...writing,
+    ...actions,
+  ];
 }

@@ -16,6 +16,7 @@ const KIND_LABEL: Record<CommandItem["kind"], string> = {
   product: "shop",
   lab: "lab",
   writing: "read",
+  person: "who",
   action: "cmd",
 };
 

@@ -47,6 +47,7 @@ export const STUDIO = {
   links: [
     { label: "↗ are.na", href: "https://are.na" },
     { label: "↗ vimeo", href: "https://vimeo.com" },
+    { label: "people", href: "/people" },
     { label: "↗ readme", href: "/colophon" },
   ],
   volume: "Volume I",
