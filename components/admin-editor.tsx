@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Work, WorkTone } from "@/content/works";
 import type { Product, ProductStatus } from "@/content/products";
+import { gumletThumbnail } from "@/lib/video-thumb";
 import { Mono } from "./mono";
 
 /**
@@ -942,14 +943,266 @@ function WorkRow({
           />
         </Field>
 
-        <Field label="HLS video URL" span={12}>
-          <Text
+        <Field label="HLS video" span={12}>
+          <VideoField
             value={work.video ?? ""}
-            placeholder="https://video.gumlet.io/.../main.m3u8 (optional)"
+            title={work.title}
             onChange={(v) => onChange({ video: v || undefined })}
           />
         </Field>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Video field with a live poster preview.
+ *
+ * For Gumlet URLs we derive the auto-generated `thumbnail-1-0.png` and
+ * show it at 16:9 next to the URL input. The preview degrades gracefully:
+ *   - no URL -> a muted "no video" card
+ *   - non-Gumlet URL -> an unknown-source card (we can't guess a thumb)
+ *   - Gumlet URL but image 404s -> "poster unavailable" card with an
+ *     "open in Gumlet" link the writer can follow to upload a still.
+ */
+function VideoField({
+  value,
+  title,
+  onChange,
+}: {
+  value: string;
+  title: string;
+  onChange: (next: string) => void;
+}) {
+  const [imgError, setImgError] = useState(false);
+  useEffect(() => {
+    setImgError(false);
+  }, [value]);
+
+  const trimmed = value.trim();
+  const thumb = gumletThumbnail(trimmed);
+  const isGumlet = thumb !== null;
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(160px, 200px) 1fr",
+        gap: 14,
+        alignItems: "stretch",
+      }}
+    >
+      <VideoThumb
+        thumb={thumb}
+        imgError={imgError}
+        onImgError={() => setImgError(true)}
+        hasUrl={trimmed.length > 0}
+        isGumlet={isGumlet}
+        title={title}
+        videoUrl={trimmed}
+      />
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <Text
+          value={value}
+          placeholder="https://video.gumlet.io/.../main.m3u8 (optional)"
+          onChange={onChange}
+        />
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "baseline",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          <Mono style={{ color: "var(--fg-tertiary)" }}>
+            {trimmed.length === 0
+              ? "No video attached."
+              : isGumlet
+                ? imgError
+                  ? "GUMLET · POSTER MISSING"
+                  : "GUMLET · POSTER AUTO"
+                : "EXTERNAL · NO PREVIEW"}
+          </Mono>
+          {trimmed.length > 0 && (
+            <a
+              href={trimmed}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 11,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "var(--fg-secondary)",
+                textDecoration: "underline",
+                textUnderlineOffset: 3,
+              }}
+            >
+              ↗ open source
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VideoThumb({
+  thumb,
+  imgError,
+  onImgError,
+  hasUrl,
+  isGumlet,
+  title,
+  videoUrl,
+}: {
+  thumb: string | null;
+  imgError: boolean;
+  onImgError: () => void;
+  hasUrl: boolean;
+  isGumlet: boolean;
+  title: string;
+  videoUrl: string;
+}) {
+  const showImage = hasUrl && isGumlet && thumb && !imgError;
+
+  return (
+    <div
+      style={{
+        aspectRatio: "16 / 9",
+        background: "var(--bg-base)",
+        border: "1px solid var(--border-subtle)",
+        borderRadius: 8,
+        overflow: "hidden",
+        position: "relative",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {showImage ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={thumb}
+          alt={`Poster frame for ${title || "work"}`}
+          onError={onImgError}
+          loading="lazy"
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
+          }}
+        />
+      ) : (
+        <VideoThumbPlaceholder
+          hasUrl={hasUrl}
+          isGumlet={isGumlet}
+          imgError={imgError}
+          videoUrl={videoUrl}
+        />
+      )}
+      {showImage && (
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: 8,
+            bottom: 8,
+            padding: "3px 7px",
+            borderRadius: 999,
+            background: "rgba(15, 17, 21, 0.72)",
+            color: "#F3F5F7",
+            fontFamily: "var(--font-mono)",
+            fontSize: 10,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+          }}
+        >
+          Poster
+        </span>
+      )}
+    </div>
+  );
+}
+
+function VideoThumbPlaceholder({
+  hasUrl,
+  isGumlet,
+  imgError,
+  videoUrl,
+}: {
+  hasUrl: boolean;
+  isGumlet: boolean;
+  imgError: boolean;
+  videoUrl: string;
+}) {
+  let label: string;
+  let detail: string | null = null;
+  if (!hasUrl) {
+    label = "No video";
+    detail = "Paste a Gumlet manifest URL to generate a poster.";
+  } else if (!isGumlet) {
+    label = "External source";
+    detail = "Previews are only generated for Gumlet manifests.";
+  } else if (imgError) {
+    label = "Poster unavailable";
+    detail = "Gumlet hasn't produced a thumbnail yet. Upload a still in the dashboard.";
+  } else {
+    label = "Loading…";
+  }
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        padding: 12,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        gap: 8,
+        background:
+          "repeating-linear-gradient(135deg, var(--bg-elevated) 0 10px, var(--bg-base) 10px 20px)",
+      }}
+    >
+      <Mono style={{ color: "var(--fg-tertiary)" }}>
+        {hasUrl ? (isGumlet && !imgError ? "◴" : "◌") : "◯"} {label}
+      </Mono>
+      {detail && (
+        <span
+          style={{
+            fontFamily: "var(--font-sans)",
+            fontSize: 11,
+            lineHeight: 1.4,
+            color: "var(--fg-tertiary)",
+          }}
+        >
+          {detail}
+        </span>
+      )}
+      {hasUrl && !isGumlet && (
+        <a
+          href={videoUrl}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 10,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: "var(--fg-secondary)",
+            textDecoration: "underline",
+            textUnderlineOffset: 3,
+          }}
+        >
+          ↗ open
+        </a>
+      )}
     </div>
   );
 }
