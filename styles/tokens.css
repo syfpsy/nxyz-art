@@ -16,11 +16,22 @@
   --bg-sunken:     #EFEFEA;
   --bg-inverse:    #111214;
 
-  /* -------- Color: Foreground -------- */
+  /* -------- Color: Foreground --------
+     fg-tertiary nudged darker to clear WCAG AA (4.5:1) on --bg-base (#F7F7F4).
+     Previous #8A8F99 landed at ~3.7:1. #6B7280 is ~4.54:1. */
   --fg-primary:    #111214;
   --fg-secondary:  #5E6470;
-  --fg-tertiary:   #8A8F99;
+  --fg-tertiary:   #6B7280;
   --fg-inverse:    #F3F5F7;
+
+  /* Foreground tones scoped to inverse surfaces. Used instead of ad-hoc
+     rgba(243,245,247,*) literals that were scattered through components. */
+  --fg-on-inverse:            #F3F5F7;
+  --fg-on-inverse-secondary:  rgba(243, 245, 247, 0.74);
+  --fg-on-inverse-tertiary:   rgba(243, 245, 247, 0.58);
+  --fg-on-inverse-muted:      rgba(243, 245, 247, 0.42);
+  --border-on-inverse-subtle: rgba(243, 245, 247, 0.10);
+  --border-on-inverse-strong: rgba(243, 245, 247, 0.18);
 
   /* -------- Color: Border -------- */
   --border-subtle:  #DFE3EA;
@@ -35,9 +46,10 @@
   --accent-ring: rgba(109, 94, 247, 0.32);
 
   /* -------- Color: Semantic (used sparingly) -------- */
-  --status-live:  #3FB37F;
-  --status-warn:  #D9A64A;
-  --status-error: #D05757;
+  --status-live:   #3FB37F;
+  --status-warn:   #D9A64A;
+  --status-error:  #D05757;
+  --status-urgent: #C73333;
 
   /* -------- Type: Families (wired to next/font vars) -------- */
   --font-sans: var(--font-space-grotesk), "Inter Tight", ui-sans-serif, -apple-system,
@@ -124,10 +136,20 @@
   --bg-sunken:   #0A0C0F;
   --bg-inverse:  #F3F5F7;
 
+  /* fg-tertiary lifted to #8A91A0 (~4.7:1 on --bg-base #0D0F12). */
   --fg-primary:   #F3F5F7;
   --fg-secondary: #98A2B3;
-  --fg-tertiary:  #6B7280;
+  --fg-tertiary:  #8A91A0;
   --fg-inverse:   #111214;
+
+  /* In dark mode the "inverse" surface becomes a light one: text on it
+     must be dark. Values mirror the light-mode foreground scale. */
+  --fg-on-inverse:            #111214;
+  --fg-on-inverse-secondary:  rgba(17, 18, 20, 0.74);
+  --fg-on-inverse-tertiary:   rgba(17, 18, 20, 0.58);
+  --fg-on-inverse-muted:      rgba(17, 18, 20, 0.42);
+  --border-on-inverse-subtle: rgba(17, 18, 20, 0.10);
+  --border-on-inverse-strong: rgba(17, 18, 20, 0.18);
 
   --border-subtle:  #23272F;
   --border-strong:  #2F343D;

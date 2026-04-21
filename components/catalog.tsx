@@ -42,6 +42,38 @@ export function Catalog({ index = "A", indexMeta, title, items }: CatalogProps) 
           ))}
         </div>
       </div>
+
+      {/* Reflow rules — the 6-col grid collapses to a 2-row card under 780px,
+          then to a tight stacked card under 540px. Punched-holes are dropped
+          below 540px to conserve horizontal space. */}
+      <style>{`
+        @media (max-width: 780px) {
+          .catalog-row {
+            grid-template-columns: auto 60px 1fr auto !important;
+            grid-template-areas:
+              "holes n title year"
+              "holes n kind dur" !important;
+            gap: 12px 16px !important;
+            padding: 14px 16px !important;
+          }
+          .catalog-row > :nth-child(1) { grid-area: holes; }
+          .catalog-row > :nth-child(2) { grid-area: n; }
+          .catalog-row > :nth-child(3) { grid-area: title; font-size: 22px !important; }
+          .catalog-row > :nth-child(4) { grid-area: kind; }
+          .catalog-row > :nth-child(5) { grid-area: dur; text-align: right; }
+          .catalog-row > :nth-child(6) { grid-area: year; text-align: right; }
+        }
+        @media (max-width: 540px) {
+          .catalog-row {
+            grid-template-columns: 48px 1fr auto !important;
+            grid-template-areas:
+              "n title year"
+              "n kind  dur"  !important;
+          }
+          .catalog-row > :nth-child(1) { display: none !important; }
+          .catalog-row > :nth-child(3) { font-size: 19px !important; }
+        }
+      `}</style>
     </section>
   );
 }

@@ -43,8 +43,20 @@ type ShellState =
   | { phase: "authed"; session: Session }
   | { phase: "error"; error: string };
 
-export function AdminShell() {
-  const [state, setState] = useState<ShellState>({ phase: "probing" });
+type AdminShellProps = {
+  /**
+   * Server-rendered starting state. When the page is rendered for an
+   * authenticated user, this avoids a probing flicker; when rendered
+   * for an anonymous user, it short-circuits straight to the login
+   * form without a client round-trip.
+   */
+  initial?: ShellState;
+};
+
+export function AdminShell({ initial }: AdminShellProps = {}) {
+  const [state, setState] = useState<ShellState>(
+    initial ?? { phase: "probing" },
+  );
 
   const probe = useCallback(async () => {
     try {
@@ -73,8 +85,10 @@ export function AdminShell() {
   }, []);
 
   useEffect(() => {
-    probe();
-  }, [probe]);
+    // Only probe if we weren't given a server-rendered starting state.
+    // Otherwise we trust the server probe and save a network round-trip.
+    if (!initial) probe();
+  }, [probe, initial]);
 
   const logout = async () => {
     await fetch("/api/admin/logout", { method: "POST" }).catch(() => undefined);
@@ -439,18 +453,32 @@ function AdminEditor({ session }: { session: Session }) {
 
       <TabBar tab={tab} setTab={setTab} counts={data} />
 
-      {tab === "works" && (
-        <WorkList
-          works={data.works}
-          onChange={(works) => setData({ ...data, works })}
-        />
-      )}
-      {tab === "products" && (
-        <ProductList
-          products={data.products}
-          onChange={(products) => setData({ ...data, products })}
-        />
-      )}
+      <div
+        role="tabpanel"
+        id="admin-tabpanel-works"
+        aria-labelledby="admin-tab-works"
+        hidden={tab !== "works"}
+      >
+        {tab === "works" && (
+          <WorkList
+            works={data.works}
+            onChange={(works) => setData({ ...data, works })}
+          />
+        )}
+      </div>
+      <div
+        role="tabpanel"
+        id="admin-tabpanel-products"
+        aria-labelledby="admin-tab-products"
+        hidden={tab !== "products"}
+      >
+        {tab === "products" && (
+          <ProductList
+            products={data.products}
+            onChange={(products) => setData({ ...data, products })}
+          />
+        )}
+      </div>
 
       <SaveBar
         dirty={dirty}
@@ -570,8 +598,30 @@ function TabBar({
     { id: "works", label: "Works", count: counts.works.length },
     { id: "products", label: "Products", count: counts.products.length },
   ];
+  // Roving tabindex: Left/Right/Home/End moves focus within the tablist
+  // per APG authoring practices for tabs with manual activation.
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const order: Tab[] = items.map((i) => i.id);
+    const current = order.indexOf(tab);
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      e.preventDefault();
+      setTab(order[(current + 1) % order.length]);
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      e.preventDefault();
+      setTab(order[(current - 1 + order.length) % order.length]);
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setTab(order[0]);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      setTab(order[order.length - 1]);
+    }
+  };
   return (
     <div
+      role="tablist"
+      aria-label="Admin content"
+      onKeyDown={onKeyDown}
       style={{
         display: "flex",
         gap: 4,
@@ -584,6 +634,11 @@ function TabBar({
           <button
             key={it.id}
             type="button"
+            role="tab"
+            id={`admin-tab-${it.id}`}
+            aria-selected={active}
+            aria-controls={`admin-tabpanel-${it.id}`}
+            tabIndex={active ? 0 : -1}
             onClick={() => setTab(it.id)}
             style={{
               appearance: "none",

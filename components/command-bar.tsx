@@ -32,6 +32,11 @@ export function CommandBar({ renderTrigger = true }: Props) {
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  // Remembers what had focus before the dialog opened so we can restore it
+  // on close — not always the trigger (the user may have opened via ⌘K).
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   const index = useMemo(buildCommandIndex, []);
 
@@ -64,16 +69,64 @@ export function CommandBar({ renderTrigger = true }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  // Focus input when opened.
+  // Focus lifecycle:
+  //   - on open, capture what had focus, move focus to the input
+  //   - on close, return focus to where it was (usually the trigger or ⌘K origin)
   useEffect(() => {
     if (open) {
       setActive(0);
-      // defer so the node is painted before focusing
+      returnFocusRef.current =
+        (document.activeElement as HTMLElement | null) ?? null;
       const t = window.setTimeout(() => inputRef.current?.focus(), 10);
       return () => window.clearTimeout(t);
     } else {
       setQ("");
+      const prev = returnFocusRef.current;
+      if (prev && typeof prev.focus === "function") {
+        // Defer so any focus the browser sets on dialog-tear-down loses the race.
+        window.setTimeout(() => prev.focus(), 0);
+      }
+      returnFocusRef.current = null;
     }
+  }, [open]);
+
+  // Focus trap. While the dialog is open, Tab/Shift-Tab cycles within the
+  // dialog's focusable descendants. Keeps keyboard users inside the modal,
+  // as aria-modal semantically promises.
+  useEffect(() => {
+    if (!open) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter(
+        (el) => !el.hasAttribute("disabled") && el.tabIndex !== -1,
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const activeEl = document.activeElement as HTMLElement | null;
+
+      if (e.shiftKey) {
+        if (activeEl === first || !dialog.contains(activeEl)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (activeEl === last || !dialog.contains(activeEl)) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
   const go = useCallback(
@@ -110,8 +163,11 @@ export function CommandBar({ renderTrigger = true }: Props) {
     <>
       {renderTrigger && (
         <button
+          ref={triggerRef}
           onClick={() => setOpen(true)}
           aria-label="Open command bar"
+          aria-haspopup="dialog"
+          aria-expanded={open}
           style={{
             width: "100%",
             display: "flex",
@@ -157,7 +213,8 @@ export function CommandBar({ renderTrigger = true }: Props) {
       {open && (
         <div
           role="dialog"
-          aria-modal
+          aria-modal="true"
+          aria-label="Command bar"
           onClick={() => setOpen(false)}
           style={{
             position: "fixed",
@@ -174,6 +231,7 @@ export function CommandBar({ renderTrigger = true }: Props) {
           }}
         >
           <div
+            ref={dialogRef}
             onClick={(e) => e.stopPropagation()}
             style={{
               width: "min(640px, calc(100vw - 32px))",
@@ -208,6 +266,8 @@ export function CommandBar({ renderTrigger = true }: Props) {
                 }}
                 onKeyDown={onKeyDownList}
                 placeholder="search work · run command · jump to —"
+                aria-label="Command bar search"
+                aria-autocomplete="list"
                 style={{
                   flex: 1,
                   border: 0,

@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import { STUDIO } from "@/content/studio";
 import { Mono } from "./mono";
 
@@ -37,7 +40,7 @@ export function StudioMap({ tone = "default", radius = 0.008 }: StudioMapProps) 
 
   const inverse = tone === "inverse";
   const fg = inverse ? "var(--fg-inverse)" : "var(--fg-primary)";
-  const fgSoft = inverse ? "rgba(243,245,247,0.56)" : "var(--fg-tertiary)";
+  const fgSoft = inverse ? "var(--fg-on-inverse-tertiary)" : "var(--fg-tertiary)";
   const border = inverse ? "var(--border-inverse)" : "var(--border-subtle)";
   const panelBg = inverse ? "#0F1115" : "var(--bg-elevated)";
 
@@ -69,48 +72,11 @@ export function StudioMap({ tone = "default", radius = 0.008 }: StudioMapProps) 
         <Mono style={{ color: fgSoft }}>SRC · OPENSTREETMAP</Mono>
       </div>
 
-      {/* Map tile. Aspect ratio keeps it cinematic without dominating the column. */}
-      <div
-        style={{
-          position: "relative",
-          aspectRatio: "16 / 10",
-          background: inverse ? "#111214" : "#EEF0F3",
-        }}
-      >
-        <iframe
-          title={`Map of ${STUDIO.name}`}
-          src={osmEmbed}
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            border: 0,
-            display: "block",
-          }}
-        />
-        {/* A thin brand-coloured pin marker sits on top of the iframe's default
-            marker for a stronger visual; positioned by pixel via CSS so we
-            don't have to touch the OSM marker. */}
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%, -100%)",
-            width: 14,
-            height: 14,
-            borderRadius: "50%",
-            background: "var(--accent)",
-            boxShadow:
-              "0 0 0 4px rgba(93, 63, 211, 0.22), 0 1px 6px rgba(0,0,0,0.45)",
-            pointerEvents: "none",
-          }}
-        />
-      </div>
+      <MapTile
+        embedSrc={osmEmbed}
+        title={`Map of ${STUDIO.name}`}
+        inverse={inverse}
+      />
 
       {/* Caption + directions */}
       <div
@@ -162,6 +128,121 @@ export function StudioMap({ tone = "default", radius = 0.008 }: StudioMapProps) 
           }
         }
       `}</style>
+    </div>
+  );
+}
+
+/**
+ * Defers mounting the OSM iframe until the tile enters the viewport. Until
+ * then, we paint a static placeholder so the section has visual presence
+ * without requesting third-party JS. Once intersection fires, we mount and
+ * keep the iframe. Respects `prefers-reduced-data` — if set, we never
+ * auto-mount and instead require an explicit click.
+ */
+function MapTile({
+  embedSrc,
+  title,
+  inverse,
+}: {
+  embedSrc: string;
+  title: string;
+  inverse: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || mounted) return;
+
+    const reducedData =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-data: reduce)").matches;
+    if (reducedData) return;
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setMounted(true);
+            io.disconnect();
+            break;
+          }
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [mounted]);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        position: "relative",
+        aspectRatio: "16 / 10",
+        background: inverse ? "#111214" : "#EEF0F3",
+      }}
+    >
+      {mounted ? (
+        <iframe
+          title={title}
+          src={embedSrc}
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            border: 0,
+            display: "block",
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setMounted(true)}
+          aria-label="Load interactive map"
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "grid",
+            placeItems: "center",
+            background: `radial-gradient(120% 90% at 50% 50%, ${
+              inverse ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"
+            } 0%, transparent 70%)`,
+            cursor: "pointer",
+            border: 0,
+            fontFamily: "var(--font-mono)",
+            fontSize: 11,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: inverse
+              ? "var(--fg-on-inverse-secondary)"
+              : "var(--fg-secondary)",
+          }}
+        >
+          Load map ↗
+        </button>
+      )}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: "50%",
+          transform: "translate(-50%, -100%)",
+          width: 14,
+          height: 14,
+          borderRadius: "50%",
+          background: "var(--accent)",
+          boxShadow:
+            "0 0 0 4px rgba(93, 63, 211, 0.22), 0 1px 6px rgba(0,0,0,0.45)",
+          pointerEvents: "none",
+        }}
+      />
     </div>
   );
 }

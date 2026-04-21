@@ -226,6 +226,39 @@ function Filmstrip({
 
   const suppressClickIfDragged = () => dragRef.current.moved > 5;
 
+  // Arrow-key navigation keeps the strip fully reachable by keyboard. The
+  // hint in the sidebar ("DRAG OR ↔ TO SCAN") now actually delivers on that
+  // promise — Left/Right step the active frame and scroll it into view,
+  // Home/End jump to the ends.
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const el = stripRef.current;
+    if (!el) return;
+    let next = activeIdx;
+    if (e.key === "ArrowRight") {
+      next = Math.min(WORKS.length - 1, activeIdx + 1);
+    } else if (e.key === "ArrowLeft") {
+      next = Math.max(0, activeIdx - 1);
+    } else if (e.key === "Home") {
+      next = 0;
+    } else if (e.key === "End") {
+      next = WORKS.length - 1;
+    } else {
+      return;
+    }
+    e.preventDefault();
+    setActiveIdx(next);
+    const frame = el.querySelector<HTMLElement>(
+      `[data-filmframe="${next}"]`,
+    );
+    if (frame) {
+      frame.scrollIntoView({
+        inline: "center",
+        block: "nearest",
+        behavior: "smooth",
+      });
+    }
+  };
+
   return (
     <div
       style={{
@@ -279,6 +312,10 @@ function Filmstrip({
         <div
           ref={stripRef}
           className="filmstrip-scroll"
+          role="region"
+          aria-label="Timeline filmstrip — scroll or use arrow keys"
+          tabIndex={0}
+          onKeyDown={onKeyDown}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
@@ -311,6 +348,7 @@ function Filmstrip({
               <FilmFrame
                 key={w.slug}
                 w={w}
+                index={i}
                 active={i === activeIdx}
                 onHover={() => {
                   if (!dragRef.current.active) setActiveIdx(i);
@@ -339,11 +377,13 @@ function Filmstrip({
 
 function FilmFrame({
   w,
+  index,
   active,
   onHover,
   suppressClickIfDragged,
 }: {
   w: Work;
+  index: number;
   active: boolean;
   onHover: () => void;
   suppressClickIfDragged: () => boolean;
@@ -354,6 +394,7 @@ function FilmFrame({
   return (
     <Link
       href={`/work/${w.slug}`}
+      data-filmframe={index}
       onMouseEnter={onHover}
       onFocus={onHover}
       draggable={false}

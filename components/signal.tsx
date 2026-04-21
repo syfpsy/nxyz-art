@@ -197,7 +197,8 @@ export function Signal() {
               letterSpacing: "0.14em",
               textTransform: "uppercase",
             }}
-            aria-pressed={muted ? "false" : "true"}
+            aria-pressed={muted}
+            aria-label={muted ? "Unmute signal audio" : "Mute signal audio"}
           >
             {muted ? "♪ unmute" : "● mute"}
           </button>

@@ -37,7 +37,7 @@ export function Footer() {
           <div style={{ marginTop: 10 }}>
             <span
               className="t-label"
-              style={{ color: "rgba(243,245,247,0.48)" }}
+              style={{ color: "var(--fg-on-inverse-muted)" }}
             >
               {STUDIO.domain} · {STUDIO.volume} · {STUDIO.year}
             </span>
@@ -69,7 +69,7 @@ export function Footer() {
           <span
             className="t-label"
             style={{
-              color: "rgba(243,245,247,0.48)",
+              color: "var(--fg-on-inverse-muted)",
               lineHeight: 1.6,
               textTransform: "uppercase",
             }}
@@ -92,7 +92,7 @@ export function Footer() {
               href={l.href}
               className="t-label"
               style={{
-                color: "rgba(243,245,247,0.72)",
+                color: "var(--fg-on-inverse-secondary)",
                 transition: "color var(--dur-base) var(--ease-standard)",
               }}
             >

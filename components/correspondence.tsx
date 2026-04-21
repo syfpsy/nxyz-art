@@ -66,7 +66,7 @@ export function Correspondence({ withGrain = false }: Props) {
                 alignItems: "baseline",
               }}
             >
-              <Mono style={{ color: "rgba(243,245,247,0.5)" }}>
+              <Mono style={{ color: "var(--fg-on-inverse-tertiary)" }}>
                 CORRESPONDENCE · 04
               </Mono>
               <Mono style={{ color: "var(--accent)" }}>· OPEN</Mono>
@@ -93,7 +93,7 @@ export function Correspondence({ withGrain = false }: Props) {
               >
                 {STUDIO.email}
               </a>
-              <Mono style={{ color: "rgba(243,245,247,0.5)" }}>
+              <Mono style={{ color: "var(--fg-on-inverse-tertiary)" }}>
                 {STUDIO.domain} · est. {STUDIO.established}
               </Mono>
             </div>
@@ -104,7 +104,7 @@ export function Correspondence({ withGrain = false }: Props) {
 
         {/* Letter */}
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <Mono style={{ color: "rgba(243,245,247,0.5)" }}>
+          <Mono style={{ color: "var(--fg-on-inverse-tertiary)" }}>
             DEAR VISITOR, — {today}
           </Mono>
           <h2
@@ -150,7 +150,7 @@ export function Correspondence({ withGrain = false }: Props) {
               Write to the studio{" "}
               <Mono style={{ color: "var(--fg-tertiary)", fontSize: 10 }}>↵</Mono>
             </a>
-            <Mono style={{ color: "rgba(243,245,247,0.5)" }}>
+            <Mono style={{ color: "var(--fg-on-inverse-tertiary)" }}>
               {STUDIO.status.replySla}
             </Mono>
           </div>
@@ -181,7 +181,7 @@ export function Correspondence({ withGrain = false }: Props) {
                 >
                   {k}
                 </div>
-                <Mono style={{ color: "rgba(243,245,247,0.5)", marginTop: 4, display: "block" }}>
+                <Mono style={{ color: "var(--fg-on-inverse-tertiary)", marginTop: 4, display: "block" }}>
                   {v}
                 </Mono>
               </div>

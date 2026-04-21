@@ -20,7 +20,7 @@ export function Wordmark({
   style,
 }: WordmarkProps) {
   const fg = tone === "dark" ? "var(--fg-inverse)" : "var(--fg-primary)";
-  const sub = tone === "dark" ? "rgba(243,245,247,0.68)" : "var(--fg-secondary)";
+  const sub = tone === "dark" ? "var(--fg-on-inverse-secondary)" : "var(--fg-secondary)";
 
   return (
     <span

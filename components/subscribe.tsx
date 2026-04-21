@@ -102,7 +102,7 @@ function SubscribeInline() {
         maxWidth: 360,
       }}
     >
-      <Mono style={{ color: "rgba(243,245,247,0.5)" }}>PRESS SHEET · DISPATCH</Mono>
+      <Mono style={{ color: "var(--fg-on-inverse-tertiary)" }}>PRESS SHEET · DISPATCH</Mono>
       <SubscribeForm compact />
     </div>
   );
@@ -110,6 +110,7 @@ function SubscribeInline() {
 
 function SubscribeForm({ compact = false }: { compact?: boolean }) {
   const id = useId();
+  const errorId = `${id}-error`;
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string>("");
@@ -160,8 +161,21 @@ function SubscribeForm({ compact = false }: { compact?: boolean }) {
       }}
       aria-live="polite"
     >
-      <label htmlFor={id} style={{ display: "none" }}>
-        Email address
+      <label
+        htmlFor={id}
+        style={{
+          position: "absolute",
+          width: 1,
+          height: 1,
+          padding: 0,
+          margin: -1,
+          overflow: "hidden",
+          clip: "rect(0 0 0 0)",
+          whiteSpace: "nowrap",
+          border: 0,
+        }}
+      >
+        Email address for the studio press sheet
       </label>
       <div
         className={`subscribe-row ${status}`}
@@ -186,6 +200,8 @@ function SubscribeForm({ compact = false }: { compact?: boolean }) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           disabled={disabled}
+          aria-invalid={status === "error"}
+          aria-describedby={status === "error" ? errorId : undefined}
           style={{
             flex: 1,
             minWidth: 0,
@@ -236,7 +252,7 @@ function SubscribeForm({ compact = false }: { compact?: boolean }) {
         }}
       >
         {status === "idle" && (
-          <Mono style={{ color: compact ? "rgba(243,245,247,0.5)" : "var(--fg-tertiary)" }}>
+          <Mono style={{ color: compact ? "var(--fg-on-inverse-tertiary)" : "var(--fg-tertiary)" }}>
             NO SPAM · UNSUBSCRIBE IN ONE CLICK
           </Mono>
         )}
@@ -247,7 +263,7 @@ function SubscribeForm({ compact = false }: { compact?: boolean }) {
           <Stamp>{message}</Stamp>
         )}
         {status === "error" && (
-          <Mono style={{ color: "var(--status-urgent, #C73333)" }}>
+          <Mono id={errorId} role="alert" style={{ color: "var(--status-urgent)" }}>
             ! {message}
           </Mono>
         )}
