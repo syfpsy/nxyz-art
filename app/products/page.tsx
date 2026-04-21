@@ -191,6 +191,7 @@ export default function ProductsArchive() {
                     href={p.url}
                     target="_blank"
                     rel="noreferrer"
+                    aria-label={`Visit ${p.domain} (opens in a new tab)`}
                     className="t-label link"
                     style={{
                       color: "var(--fg-secondary)",

@@ -26,13 +26,28 @@ export function ThemeToggle() {
 
   const label = theme === "dark" ? "light" : "dark";
 
+  // Pre-hydration we don't know the theme in this component — but the
+  // inline ThemeScript in <head> already wrote `data-theme` to <html>.
+  // Reading that attribute gives us the correct first paint label without
+  // waiting for the hydration round-trip, so we never show the "—" dash.
+  const preHydrationLabel = (): string => {
+    if (typeof document === "undefined") return "dark";
+    const t = document.documentElement.getAttribute("data-theme");
+    return t === "dark" ? "light" : "dark";
+  };
+  const displayLabel = theme === null ? preHydrationLabel() : label;
+
   return (
     <button
       onClick={toggle}
-      aria-label={`Switch to ${label} mode`}
+      aria-label={`Switch to ${displayLabel} mode`}
       className="t-label"
       style={{
-        padding: "6px 10px",
+        // Meets WCAG 2.5.8 Minimum Target Size (24x24) with room: the control
+        // sits on a busy nav strip so we keep it compact but tap-friendly.
+        padding: "10px 14px",
+        minWidth: 44,
+        minHeight: 36,
         border: "1px solid var(--border-subtle)",
         borderRadius: 6,
         color: "var(--fg-secondary)",
@@ -41,16 +56,29 @@ export function ThemeToggle() {
         lineHeight: 1,
         letterSpacing: "0.14em",
       }}
+      // Hover and keyboard focus produce the same affordance — the border
+      // lifts and the text darkens. onBlur is guarded so hover state is
+      // preserved when the user tabs away from a hovered element.
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = "var(--border-strong)";
         e.currentTarget.style.color = "var(--fg-primary)";
       }}
       onMouseLeave={(e) => {
+        if (document.activeElement !== e.currentTarget) {
+          e.currentTarget.style.borderColor = "var(--border-subtle)";
+          e.currentTarget.style.color = "var(--fg-secondary)";
+        }
+      }}
+      onFocus={(e) => {
+        e.currentTarget.style.borderColor = "var(--border-strong)";
+        e.currentTarget.style.color = "var(--fg-primary)";
+      }}
+      onBlur={(e) => {
         e.currentTarget.style.borderColor = "var(--border-subtle)";
         e.currentTarget.style.color = "var(--fg-secondary)";
       }}
     >
-      {theme === null ? "—" : label}
+      {displayLabel}
     </button>
   );
 }

@@ -188,7 +188,7 @@ export function Signal() {
             style={{
               background: "none",
               border: "1px solid var(--border-subtle)",
-              padding: "6px 12px",
+              padding: "10px 16px",
               borderRadius: 999,
               color: "var(--fg-primary)",
               cursor: "pointer",
@@ -196,6 +196,7 @@ export function Signal() {
               fontSize: 11,
               letterSpacing: "0.14em",
               textTransform: "uppercase",
+              minHeight: 36,
             }}
             aria-pressed={muted}
             aria-label={muted ? "Unmute signal audio" : "Mute signal audio"}

@@ -267,8 +267,9 @@ function Filmstrip({
         background: "var(--bg-base)",
       }}
     >
-      <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", minHeight: 280 }}>
+      <div className="filmstrip-grid">
         <div
+          className="filmstrip-sidebar"
           style={{
             borderRight: "1px solid var(--border-subtle)",
             padding: "18px 20px",
@@ -361,6 +362,41 @@ function Filmstrip({
       </div>
 
       <style>{`
+        /* Desktop: fixed 140px sidebar (index title + frame counter) next to
+           the scrollable strip. Mobile: sidebar stacks on top with minimum
+           chrome so the strip gets the full viewport width. */
+        .filmstrip-grid {
+          display: grid;
+          grid-template-columns: 140px 1fr;
+          min-height: 280px;
+        }
+        @media (max-width: 640px) {
+          .filmstrip-grid {
+            grid-template-columns: 1fr;
+            min-height: 240px;
+          }
+          .filmstrip-sidebar {
+            border-right: 0 !important;
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 14px 20px !important;
+            flex-direction: row !important;
+            justify-content: space-between !important;
+            align-items: flex-end;
+            gap: 16px;
+          }
+          .filmstrip-sidebar > div:first-child {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+          }
+          .filmstrip-sidebar > div:first-child > div:nth-child(2) {
+            font-size: 20px !important;
+          }
+          .filmstrip-sidebar > div:first-child > span:last-child {
+            display: none;
+          }
+        }
+
         /* Hide the native scrollbar while keeping the element scrollable. */
         .filmstrip-scroll {
           scrollbar-width: none;

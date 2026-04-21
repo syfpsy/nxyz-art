@@ -34,6 +34,12 @@ export function BrowserFrame({
   const blocked = product.embedBlocked ?? false;
   const bodyRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  // Defer the iframe until the card enters the viewport. Four simultaneous
+  // third-party documents loading on first paint stalls the main thread
+  // and eats layout budget; this cuts the cost to near-zero above the fold
+  // and amortises it as the user scrolls. Detail pages mount immediately
+  // because the iframe is the subject of the route.
+  const [mounted, setMounted] = useState(variant === "detail");
 
   // Recompute the scale so `viewportWidth` fits the card body.
   useEffect(() => {
@@ -48,6 +54,35 @@ export function BrowserFrame({
     ro.observe(el);
     return () => ro.disconnect();
   }, [viewportWidth]);
+
+  // Intersection-gated mount for card variants. Respects
+  // `prefers-reduced-data` by never auto-mounting — the user can still
+  // opt in via the "Load preview" button.
+  useEffect(() => {
+    if (variant !== "card" || mounted || blocked) return;
+    const el = bodyRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+
+    const reducedData =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-data: reduce)").matches;
+    if (reducedData) return;
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setMounted(true);
+            io.disconnect();
+            break;
+          }
+        }
+      },
+      { rootMargin: "300px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [variant, mounted, blocked]);
 
   return (
     <div
@@ -147,7 +182,7 @@ export function BrowserFrame({
           background: "var(--bg-elevated)",
         }}
       >
-        {!blocked && (
+        {!blocked && mounted && (
           <iframe
             src={product.url}
             title={`${product.name} live preview`}
@@ -166,6 +201,49 @@ export function BrowserFrame({
               maxWidth: "none",
             }}
           />
+        )}
+
+        {!blocked && !mounted && (
+          <button
+            type="button"
+            onClick={(e) => {
+              // The parent card is usually a link — stop propagation so
+              // clicking "Load preview" mounts the iframe without also
+              // navigating to the detail page.
+              e.stopPropagation();
+              e.preventDefault();
+              setMounted(true);
+            }}
+            aria-label={`Load live preview of ${product.name}`}
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: `
+                radial-gradient(120% 90% at 50% 50%, ${hexWithAlpha(product.accent, 0.10)} 0%, transparent 70%),
+                var(--bg-elevated)
+              `,
+              border: 0,
+              cursor: "pointer",
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
+            <span
+              style={{
+                padding: "8px 14px",
+                borderRadius: 999,
+                border: "1px solid var(--border-subtle)",
+                background: "var(--bg-elevated)",
+                fontFamily: "var(--font-mono)",
+                fontSize: 11,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: "var(--fg-secondary)",
+              }}
+            >
+              ◯ Load preview
+            </span>
+          </button>
         )}
 
         {blocked && <BlockedFallback product={product} variant={variant} />}
@@ -355,6 +433,7 @@ function BlockedFallback({
             href={product.url}
             target="_blank"
             rel="noreferrer"
+            aria-label={`Open ${product.domain} in a new tab`}
             style={{
               display: "inline-flex",
               alignItems: "center",

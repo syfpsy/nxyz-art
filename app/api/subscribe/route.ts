@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { identityFromRequest, rateLimit } from "@/lib/rate-limit";
 
 /**
  * Newsletter subscribe endpoint.
@@ -10,6 +11,11 @@ import { NextResponse } from "next/server";
  *   3. Nothing: logs to the function logs and returns success anyway.
  *      This lets the form work in production before a provider is wired up.
  *
+ * Abuse mitigations:
+ *   - Honeypot field (`company`) — legitimate clients leave this empty.
+ *   - IP rate limit (5 attempts / 10 minutes) — caps log-flood and
+ *     provider-quota pressure from a naive loop.
+ *
  * The route is intentionally forgiving: it never leaks provider errors to
  * the client beyond "we couldn't record your email, try again later".
  */
@@ -17,7 +23,12 @@ export const runtime = "nodejs";
 
 type Body = {
   email?: unknown;
+  /** Honeypot — humans always leave this empty. */
+  company?: unknown;
 };
+
+const SUBSCRIBE_LIMIT = 5;
+const SUBSCRIBE_WINDOW_MS = 10 * 60 * 1000;
 
 function isValidEmail(value: unknown): value is string {
   if (typeof value !== "string") return false;
@@ -26,6 +37,25 @@ function isValidEmail(value: unknown): value is string {
 }
 
 export async function POST(request: Request) {
+  const identity = identityFromRequest(request);
+  const rl = rateLimit(
+    "subscribe",
+    identity,
+    SUBSCRIBE_LIMIT,
+    SUBSCRIBE_WINDOW_MS,
+  );
+  if (!rl.ok) {
+    const res = NextResponse.json(
+      {
+        ok: false,
+        error: "Too many signups from this address. Try again shortly.",
+      },
+      { status: 429 },
+    );
+    res.headers.set("Retry-After", String(rl.retryAfterSec));
+    return res;
+  }
+
   let body: Body;
   try {
     body = (await request.json()) as Body;
@@ -34,6 +64,16 @@ export async function POST(request: Request) {
       { ok: false, error: "Invalid JSON body." },
       { status: 400 },
     );
+  }
+
+  // Honeypot: return a success shape without contacting any provider, so
+  // the bot's logs look identical to a real success and it doesn't retry.
+  const hp = typeof body.company === "string" ? body.company.trim() : "";
+  if (hp.length > 0) {
+    console.log(
+      `[subscribe] honeypot tripped ip=${identity} hp_len=${hp.length}`,
+    );
+    return NextResponse.json({ ok: true, provider: "honeypot" });
   }
 
   const email =

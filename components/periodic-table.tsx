@@ -50,76 +50,69 @@ export function PeriodicTable() {
             gap: 10,
           }}
         >
-          {ELEMENTS.map((el) => (
-            <div
-              key={el.n}
-              style={{
-                aspectRatio: "1 / 1",
-                padding: 14,
-                background: el.accent ? "var(--accent-soft)" : "var(--bg-elevated)",
-                border:
-                  "1px solid " +
-                  (el.accent ? "var(--accent)" : "var(--border-subtle)"),
-                borderRadius: 4,
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <Mono
-                  style={{
-                    color: el.accent
-                      ? "var(--accent-deep)"
-                      : "var(--fg-tertiary)",
-                    fontSize: 9,
-                  }}
-                >
-                  {String(el.count).padStart(3, "0")}
-                </Mono>
-                <Mono
-                  style={{
-                    color: el.accent
-                      ? "var(--accent-deep)"
-                      : "var(--fg-tertiary)",
-                    fontSize: 9,
-                  }}
-                >
-                  {el.cat}
-                </Mono>
-              </div>
-              <div>
-                <div
-                  style={{
-                    fontFamily: "var(--font-sans)",
-                    fontWeight: 600,
-                    fontSize: "clamp(42px, 5vw, 72px)",
-                    letterSpacing: "-0.04em",
-                    lineHeight: 0.9,
-                    color: el.accent
-                      ? "var(--accent-deep)"
-                      : "var(--fg-primary)",
-                  }}
-                >
-                  {el.n}
+          {ELEMENTS.map((el) => {
+            // Accent tiles pull their ink from --accent-on-soft, which flips
+            // to a lifted violet in dark mode. This keeps the tile readable
+            // when --accent-soft becomes a translucent tint over near-black.
+            const accentInk = el.accent
+              ? "var(--accent-on-soft)"
+              : "var(--fg-tertiary)";
+            const primaryInk = el.accent
+              ? "var(--accent-on-soft)"
+              : "var(--fg-primary)";
+            return (
+              <div
+                key={el.n}
+                style={{
+                  aspectRatio: "1 / 1",
+                  padding: 14,
+                  background: el.accent
+                    ? "var(--accent-soft)"
+                    : "var(--bg-elevated)",
+                  border:
+                    "1px solid " +
+                    (el.accent ? "var(--accent)" : "var(--border-subtle)"),
+                  borderRadius: 4,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <Mono style={{ color: accentInk, fontSize: 9 }}>
+                    {String(el.count).padStart(3, "0")}
+                  </Mono>
+                  <Mono style={{ color: accentInk, fontSize: 9 }}>{el.cat}</Mono>
                 </div>
-                <div
-                  style={{
-                    fontFamily: "var(--font-sans)",
-                    fontWeight: 500,
-                    fontSize: 14,
-                    letterSpacing: "-0.01em",
-                    marginTop: 4,
-                    color: el.accent
-                      ? "var(--accent-deep)"
-                      : "var(--fg-primary)",
-                  }}
-                >
-                  {el.full}
+                <div>
+                  <div
+                    style={{
+                      fontFamily: "var(--font-sans)",
+                      fontWeight: 600,
+                      fontSize: "clamp(42px, 5vw, 72px)",
+                      letterSpacing: "-0.04em",
+                      lineHeight: 0.9,
+                      color: primaryInk,
+                    }}
+                  >
+                    {el.n}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: "var(--font-sans)",
+                      fontWeight: 500,
+                      fontSize: 14,
+                      letterSpacing: "-0.01em",
+                      marginTop: 4,
+                      color: primaryInk,
+                    }}
+                  >
+                    {el.full}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <style>{`

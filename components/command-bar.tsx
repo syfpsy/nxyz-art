@@ -25,6 +25,12 @@ type Props = {
   renderTrigger?: boolean;
 };
 
+// Stable IDs tie the combobox/listbox/option triple together. They live at
+// module scope because this component is effectively a singleton — the
+// navigation only ever mounts one instance.
+const LISTBOX_ID = "nxyz-cmdk-listbox";
+const optionId = (idx: number) => `nxyz-cmdk-option-${idx}`;
+
 export function CommandBar({ renderTrigger = true }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -152,12 +158,35 @@ export function CommandBar({ renderTrigger = true }: Props) {
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActive((a) => Math.max(a - 1, 0));
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setActive(0);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      setActive(Math.max(0, results.length - 1));
     } else if (e.key === "Enter") {
       e.preventDefault();
       const item = results[active];
       if (item) go(item);
     }
   };
+
+  // Keep the active option in view as the user arrow-keys down or up. The
+  // input retains focus (per combobox pattern) so we scroll the listbox
+  // child ourselves rather than relying on :focus scroll.
+  useEffect(() => {
+    if (!open) return;
+    const list = listRef.current;
+    if (!list) return;
+    const el = list.querySelector<HTMLElement>(`#${optionId(active)}`);
+    if (!el) return;
+    const top = el.offsetTop;
+    const bottom = top + el.offsetHeight;
+    const viewTop = list.scrollTop;
+    const viewBottom = viewTop + list.clientHeight;
+    if (top < viewTop) list.scrollTop = top;
+    else if (bottom > viewBottom) list.scrollTop = bottom - list.clientHeight;
+  }, [active, open, results.length]);
 
   return (
     <>
@@ -182,10 +211,21 @@ export function CommandBar({ renderTrigger = true }: Props) {
             cursor: "pointer",
             transition: "all var(--dur-base) var(--ease-standard)",
           }}
+          // Hover and keyboard focus should light up the same way — mirror
+          // the border treatment onFocus/onBlur for parity. onBlur is guarded
+          // so the hover state survives if the user Tabs away while hovering.
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = "var(--border-strong)";
           }}
           onMouseLeave={(e) => {
+            if (document.activeElement !== e.currentTarget) {
+              e.currentTarget.style.borderColor = "var(--border-subtle)";
+            }
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = "var(--border-strong)";
+          }}
+          onBlur={(e) => {
             e.currentTarget.style.borderColor = "var(--border-subtle)";
           }}
         >
@@ -268,6 +308,12 @@ export function CommandBar({ renderTrigger = true }: Props) {
                 placeholder="search work · run command · jump to —"
                 aria-label="Command bar search"
                 aria-autocomplete="list"
+                role="combobox"
+                aria-expanded="true"
+                aria-controls={LISTBOX_ID}
+                aria-activedescendant={
+                  results.length > 0 ? optionId(active) : undefined
+                }
                 style={{
                   flex: 1,
                   border: 0,
@@ -284,6 +330,9 @@ export function CommandBar({ renderTrigger = true }: Props) {
 
             <div
               ref={listRef}
+              id={LISTBOX_ID}
+              role="listbox"
+              aria-label="Search results"
               style={{
                 maxHeight: "48vh",
                 overflowY: "auto",
@@ -303,10 +352,19 @@ export function CommandBar({ renderTrigger = true }: Props) {
                 </div>
               ) : (
                 results.map((r, i) => (
-                  <button
+                  <div
                     key={r.id}
+                    id={optionId(i)}
+                    role="option"
+                    aria-selected={i === active}
+                    // Mouse: point-to-activate (matches APG combobox intent).
+                    // Click: we handle via onMouseDown to fire before the input
+                    // loses focus to the newly-focused target.
                     onMouseEnter={() => setActive(i)}
-                    onClick={() => go(r)}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      go(r);
+                    }}
                     style={{
                       width: "100%",
                       display: "flex",
@@ -339,7 +397,7 @@ export function CommandBar({ renderTrigger = true }: Props) {
                       <span style={{ color: "var(--fg-tertiary)" }}>{r.hint}</span>
                     )}
                     <span style={{ color: "var(--fg-tertiary)" }}>↵</span>
-                  </button>
+                  </div>
                 ))
               )}
             </div>

@@ -83,6 +83,28 @@ video {
   box-shadow: var(--shadow-focus);
 }
 
+/* Skip-to-content link — visually hidden until focused. Sits above the
+   sticky nav at z-index 50 so it can't be visually covered. */
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 50;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--fg-primary);
+  color: var(--bg-base);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 14px;
+  text-decoration: none;
+  transform: translateY(-200%);
+  transition: transform var(--dur-base) var(--ease-standard);
+}
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
 /* Running registration marks — a subtle "the page is calibrated" cue */
 .regmark {
   position: fixed;

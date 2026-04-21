@@ -111,7 +111,12 @@ function SubscribeInline() {
 function SubscribeForm({ compact = false }: { compact?: boolean }) {
   const id = useId();
   const errorId = `${id}-error`;
+  const hpId = `${id}-hp`;
   const [email, setEmail] = useState("");
+  // Honeypot: bots will fill this because autofill can't resist a field
+  // labelled "Company". Real users never see it — it's taken off the page
+  // visually, off the tab order, and marked autocomplete=off.
+  const [hp, setHp] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string>("");
 
@@ -126,7 +131,7 @@ function SubscribeForm({ compact = false }: { compact?: boolean }) {
       const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, company: hp }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
@@ -177,6 +182,30 @@ function SubscribeForm({ compact = false }: { compact?: boolean }) {
       >
         Email address for the studio press sheet
       </label>
+      {/* Honeypot — visually hidden, unreachable by keyboard, ignored by
+          autofill for humans (autocomplete="off" + unusual label), but
+          irresistible to naive form-filling bots. */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          left: -9999,
+          width: 1,
+          height: 1,
+          overflow: "hidden",
+        }}
+      >
+        <label htmlFor={hpId}>Company (leave empty)</label>
+        <input
+          id={hpId}
+          name="company"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          value={hp}
+          onChange={(e) => setHp(e.target.value)}
+        />
+      </div>
       <div
         className={`subscribe-row ${status}`}
         style={{
@@ -223,9 +252,18 @@ function SubscribeForm({ compact = false }: { compact?: boolean }) {
           type="submit"
           disabled={disabled}
           style={{
-            padding: compact ? "10px 14px" : "14px 20px",
+            // Footer pill sits on the always-dark stripe — its left hairline
+            // reads against the button face (--fg-primary), which in light
+            // mode is near-black. We pull from the on-inverse scale so the
+            // seam between input and submit stays visible on both themes.
+            padding: compact ? "12px 16px" : "14px 20px",
+            minHeight: compact ? 44 : undefined,
             border: 0,
-            borderLeft: "1px solid var(--border-subtle)",
+            borderLeft: `1px solid ${
+              compact
+                ? "var(--border-on-inverse-strong)"
+                : "var(--border-subtle)"
+            }`,
             background: status === "success" ? "var(--accent)" : "var(--fg-primary)",
             color: "var(--bg-base)",
             fontFamily: "var(--font-sans)",

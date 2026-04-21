@@ -262,17 +262,28 @@ function MapLink({
   children: React.ReactNode;
 }) {
   const inverse = tone === "inverse";
+  // The label doubles as directions to a named provider, so we announce
+  // that the link opens in a new tab — screen readers would otherwise read
+  // only the provider name with no cue about external navigation.
+  const providerName =
+    typeof children === "string" ? children : "external map";
   return (
     <a
       href={href}
       target="_blank"
       rel="noreferrer"
+      aria-label={`Open directions in ${providerName} (opens in a new tab)`}
       style={{
         fontFamily: "var(--font-mono)",
         fontSize: 11,
         letterSpacing: "0.14em",
         textTransform: "uppercase",
-        padding: "6px 10px",
+        // Bumped to clear WCAG 2.5.8 (24x24) with comfortable margin on
+        // touch and also ease mouse acquisition.
+        padding: "10px 14px",
+        minHeight: 36,
+        display: "inline-flex",
+        alignItems: "center",
         borderRadius: 999,
         // Inverse pills live on the always-dark #0F1115 panel, so both
         // border and ink must read against that surface. The default-tone

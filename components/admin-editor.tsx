@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Work, WorkTone } from "@/content/works";
 import type { Product, ProductStatus } from "@/content/products";
 import { gumletThumbnail } from "@/lib/video-thumb";
@@ -175,11 +175,12 @@ function AdminHeader({
                 border: "1px solid var(--border-subtle)",
                 background: "transparent",
                 color: "var(--fg-secondary)",
-                padding: "6px 12px",
+                padding: "10px 16px",
                 borderRadius: 999,
                 fontFamily: "var(--font-sans)",
                 fontSize: 13,
                 cursor: "pointer",
+                minHeight: 36,
               }}
             >
               Log out
@@ -549,6 +550,7 @@ function ReceiptBanner({
           href={receipt.commitUrl}
           target="_blank"
           rel="noreferrer"
+          aria-label="Open GitHub commit in a new tab"
           style={{
             fontFamily: "var(--font-mono)",
             fontSize: 11,
@@ -598,23 +600,36 @@ function TabBar({
     { id: "works", label: "Works", count: counts.works.length },
     { id: "products", label: "Products", count: counts.products.length },
   ];
-  // Roving tabindex: Left/Right/Home/End moves focus within the tablist
-  // per APG authoring practices for tabs with manual activation.
+  // Per APG tabs pattern with automatic activation: arrow keys select AND
+  // move focus in one motion. We hold refs per tab so we can programmatically
+  // shift focus after updating state — without this, the previously-selected
+  // tab becomes tabIndex={-1} and focus falls out of the tablist.
+  const tabRefs = useRef<Record<Tab, HTMLButtonElement | null>>({
+    works: null,
+    products: null,
+  });
+  const activate = (next: Tab) => {
+    setTab(next);
+    // Defer focus so the re-render commits the new tabIndex first.
+    window.requestAnimationFrame(() => {
+      tabRefs.current[next]?.focus();
+    });
+  };
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const order: Tab[] = items.map((i) => i.id);
     const current = order.indexOf(tab);
     if (e.key === "ArrowRight" || e.key === "ArrowDown") {
       e.preventDefault();
-      setTab(order[(current + 1) % order.length]);
+      activate(order[(current + 1) % order.length]);
     } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
       e.preventDefault();
-      setTab(order[(current - 1 + order.length) % order.length]);
+      activate(order[(current - 1 + order.length) % order.length]);
     } else if (e.key === "Home") {
       e.preventDefault();
-      setTab(order[0]);
+      activate(order[0]);
     } else if (e.key === "End") {
       e.preventDefault();
-      setTab(order[order.length - 1]);
+      activate(order[order.length - 1]);
     }
   };
   return (
@@ -633,6 +648,9 @@ function TabBar({
         return (
           <button
             key={it.id}
+            ref={(el) => {
+              tabRefs.current[it.id] = el;
+            }}
             type="button"
             role="tab"
             id={`admin-tab-${it.id}`}
@@ -645,7 +663,7 @@ function TabBar({
               background: active ? "var(--bg-elevated)" : "transparent",
               border: 0,
               borderBottom: `2px solid ${active ? "var(--fg-primary)" : "transparent"}`,
-              padding: "10px 14px",
+              padding: "12px 16px",
               fontFamily: "var(--font-sans)",
               fontSize: 14,
               color: active ? "var(--fg-primary)" : "var(--fg-secondary)",
@@ -654,6 +672,7 @@ function TabBar({
               alignItems: "baseline",
               gap: 8,
               marginBottom: -1,
+              minHeight: 44,
             }}
           >
             <span style={{ fontWeight: 500 }}>{it.label}</span>
@@ -1085,6 +1104,7 @@ function VideoField({
               href={trimmed}
               target="_blank"
               rel="noreferrer"
+              aria-label="Open video source URL in a new tab"
               style={{
                 fontFamily: "var(--font-mono)",
                 fontSize: 11,
@@ -1245,6 +1265,7 @@ function VideoThumbPlaceholder({
           href={videoUrl}
           target="_blank"
           rel="noreferrer"
+          aria-label="Open video URL in a new tab"
           style={{
             fontFamily: "var(--font-mono)",
             fontSize: 10,
@@ -1588,12 +1609,15 @@ function IconBtn({
           : danger
             ? "var(--status-urgent, #C73333)"
             : "var(--fg-secondary)",
-        width: 26,
-        height: 26,
+        // Admin lives behind auth and has many tightly-packed controls, so
+        // we meet WCAG 2.5.8 Minimum (24x24) comfortably at 32x32 rather
+        // than inflating to 44x44 which would bloat every row header.
+        width: 32,
+        height: 32,
         borderRadius: 6,
         cursor: disabled ? "default" : "pointer",
         fontFamily: "var(--font-mono)",
-        fontSize: 13,
+        fontSize: 14,
         lineHeight: 1,
       }}
     >

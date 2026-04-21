@@ -70,25 +70,16 @@ export default function RootLayout({
         <ThemeScript />
       </head>
       <body>
+        {/* Skip link: visible only on keyboard focus. Saves tabbing past the
+            nav cluster on every page load. */}
+        <a href="#main" className="skip-link">Skip to content</a>
         <div className="regmark" style={{ top: 8, left: 8 }} />
         <div className="regmark" style={{ top: 8, right: 8 }} />
         <div className="regmark" style={{ bottom: 8, left: 8 }} />
         <div className="regmark" style={{ bottom: 8, right: 8 }} />
         <Nav />
-        <main>{children}</main>
+        <main id="main">{children}</main>
         <Footer />
-        {/* Global pulse keyframe used by Dot and any micro-interactions. */}
-        <style>{`
-          @keyframes nxyz-pulse {
-            0% { box-shadow: 0 0 0 0 rgba(63,179,127,0.55); }
-            70% { box-shadow: 0 0 0 6px rgba(63,179,127,0); }
-            100% { box-shadow: 0 0 0 0 rgba(63,179,127,0); }
-          }
-          @keyframes nxyz-fade {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-        `}</style>
       </body>
     </html>
   );

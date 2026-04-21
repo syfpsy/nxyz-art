@@ -117,6 +117,7 @@ export default async function ProductPage({ params }: Params) {
               href={p.url}
               target="_blank"
               rel="noreferrer"
+              aria-label={`Visit ${p.domain} (opens in a new tab)`}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -195,6 +196,7 @@ export default async function ProductPage({ params }: Params) {
                 href={p.url}
                 target="_blank"
                 rel="noreferrer"
+                aria-label={`Open ${p.domain} in a new tab`}
                 className="link hover-accent"
                 style={{ color: "var(--fg-primary)" }}
               >

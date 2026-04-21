@@ -5,11 +5,18 @@ import {
   signSession,
   verifyCredentials,
 } from "@/lib/auth";
+import { identityFromRequest, rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type Body = { email?: unknown; password?: unknown };
+
+// 10 login attempts per IP per 10-minute window. Generous enough that a
+// forgetful admin on a shared office IP won't trip it during a password
+// manager fumble, tight enough that a script loop gets stopped cold.
+const LOGIN_LIMIT = 10;
+const LOGIN_WINDOW_MS = 10 * 60 * 1000;
 
 /**
  * Admin login. Issues an HMAC-signed session cookie on valid credentials.
@@ -20,6 +27,21 @@ type Body = { email?: unknown; password?: unknown };
  */
 export async function POST(request: Request) {
   const started = Date.now();
+
+  const identity = identityFromRequest(request);
+  const rl = rateLimit("admin-login", identity, LOGIN_LIMIT, LOGIN_WINDOW_MS);
+  if (!rl.ok) {
+    await delayTo(started, 250);
+    const res = NextResponse.json(
+      {
+        ok: false,
+        error: "Too many attempts. Try again in a few minutes.",
+      },
+      { status: 429 },
+    );
+    res.headers.set("Retry-After", String(rl.retryAfterSec));
+    return res;
+  }
 
   let body: Body;
   try {
