@@ -236,9 +236,10 @@ export function CommandBar({ renderTrigger = true }: Props) {
             {">"}
           </span>
           <span
-            className="t-mono"
+            className="t-mono cmdk-trigger-label cmdk-trigger-label--long"
             style={{
               flex: 1,
+              minWidth: 0,
               color: "var(--fg-tertiary)",
               fontSize: 12,
               letterSpacing: "0.02em",
@@ -246,9 +247,51 @@ export function CommandBar({ renderTrigger = true }: Props) {
           >
             search work · run command · jump to —
           </span>
-          <Kbd>⌘K</Kbd>
+          <span
+            className="t-mono cmdk-trigger-label cmdk-trigger-label--mid"
+            style={{
+              flex: 1,
+              minWidth: 0,
+              color: "var(--fg-tertiary)",
+              fontSize: 12,
+              letterSpacing: "0.02em",
+            }}
+          >
+            Search · commands · jump
+          </span>
+          <span
+            className="t-mono cmdk-trigger-label cmdk-trigger-label--short"
+            style={{
+              flex: 1,
+              minWidth: 0,
+              color: "var(--fg-tertiary)",
+              fontSize: 12,
+              letterSpacing: "0.02em",
+            }}
+          >
+            Search…
+          </span>
+          <span className="cmdk-trigger-kbd">
+            <Kbd>⌘K</Kbd>
+          </span>
         </button>
       )}
+
+      <style>{`
+        .cmdk-trigger-label--mid,
+        .cmdk-trigger-label--short {
+          display: none;
+        }
+        @media (max-width: 900px) {
+          .cmdk-trigger-label--long { display: none; }
+          .cmdk-trigger-label--mid { display: inline; }
+        }
+        @media (max-width: 480px) {
+          .cmdk-trigger-label--mid { display: none; }
+          .cmdk-trigger-label--short { display: inline; }
+          .cmdk-trigger-kbd { display: none; }
+        }
+      `}</style>
 
       {open && (
         <div

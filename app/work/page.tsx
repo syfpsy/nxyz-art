@@ -17,7 +17,11 @@ export default function WorkArchive() {
 
   return (
     <>
-      <section style={{ padding: "72px 24px 32px" }}>
+      <section
+        style={{
+          padding: "clamp(40px, 8vw, 72px) clamp(16px, 4vw, 24px) 32px",
+        }}
+      >
         <div style={{ maxWidth: "var(--container-max)", margin: "0 auto" }}>
           <Mono style={{ color: "var(--fg-tertiary)" }}>SECTION · A</Mono>
           <h1

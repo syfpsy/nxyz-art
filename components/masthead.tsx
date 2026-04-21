@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import Link from "next/link";
 import { WORKS, type Work } from "@/content/works";
 import { Mono } from "./mono";
@@ -25,21 +33,29 @@ export function Masthead() {
   }, []);
 
   const year = new Date().getFullYear();
-  const active = WORKS[activeIdx];
+  const active =
+    WORKS.length > 0 ? (WORKS[activeIdx] ?? WORKS[0]) : undefined;
 
   return (
     <section
       aria-label="Masthead"
       style={{ borderBottom: "1px solid var(--border-subtle)", position: "relative" }}
     >
-      <div style={{ padding: "36px 24px 0", position: "relative", overflow: "hidden" }}>
+      <div
+        style={{
+          padding: "clamp(24px, 5vw, 36px) clamp(16px, 4vw, 24px) 0",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
         {/* Dateline strip */}
         <div
+          className="masthead-dateline"
           style={{
             display: "flex",
             alignItems: "baseline",
             justifyContent: "space-between",
-            gap: 24,
+            gap: "clamp(12px, 3vw, 24px)",
             borderBottom: "1px solid var(--fg-primary)",
             paddingBottom: 14,
             flexWrap: "wrap",
@@ -119,31 +135,43 @@ export function Masthead() {
               textAlign: "right",
             }}
           >
-            <Mono style={{ color: "var(--fg-tertiary)" }}>NOW PLAYING</Mono>
-            <span
-              style={{
-                fontFamily: "var(--font-sans)",
-                fontWeight: 500,
-                fontSize: 15,
-                letterSpacing: "-0.01em",
-              }}
-            >
-              {active.title} / {active.kind.toLowerCase()}
-            </span>
-            <Mono style={{ color: "var(--accent)" }}>
-              → fr. {active.dur ?? "static · n/a"}
-            </Mono>
+            {active ? (
+              <>
+                <Mono style={{ color: "var(--fg-tertiary)" }}>NOW PLAYING</Mono>
+                <span
+                  style={{
+                    fontFamily: "var(--font-sans)",
+                    fontWeight: 500,
+                    fontSize: 15,
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  {active.title} / {active.kind.toLowerCase()}
+                </span>
+                <Mono style={{ color: "var(--accent)" }}>
+                  → fr. {active.dur ?? "static · n/a"}
+                </Mono>
+              </>
+            ) : (
+              <Mono style={{ color: "var(--fg-tertiary)" }}>NO WORKS ON FILE</Mono>
+            )}
           </div>
         </div>
       </div>
 
       {/* Timeline filmstrip */}
-      <Filmstrip activeIdx={activeIdx} setActiveIdx={setActiveIdx} />
+      {WORKS.length > 0 && (
+        <Filmstrip activeIdx={activeIdx} setActiveIdx={setActiveIdx} />
+      )}
 
       <style>{`
+        @media (max-width: 520px) {
+          .masthead-dateline > :nth-child(3) { display: none; }
+        }
         @media (max-width: 720px) {
           .masthead-colophon {
             grid-template-columns: 1fr !important;
+            gap: clamp(16px, 4vw, 24px) !important;
           }
           .masthead-colophon > div:last-child { text-align: left !important; }
         }
@@ -152,17 +180,32 @@ export function Masthead() {
   );
 }
 
+/** Slow horizontal crawl (px/s) — lower-thirds / news-ticker feel. */
+const FILMSTRIP_AUTO_SCROLL_PX = 13;
+/** Max concurrent HLS streams in the strip (closest to center). */
+const FILMSTRIP_MAX_PLAYING = 4;
+
+function setsEqual(a: Set<number>, b: Set<number>) {
+  if (a.size !== b.size) return false;
+  for (const x of a) if (!b.has(x)) return false;
+  return true;
+}
+
 function Filmstrip({
   activeIdx,
   setActiveIdx,
 }: {
   activeIdx: number;
-  setActiveIdx: (i: number) => void;
+  setActiveIdx: Dispatch<SetStateAction<number>>;
 }) {
   const stripRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const autoPausedRef = useRef(false);
+  const rafRef = useRef(0);
+  const scrollSyncRaf = useRef(0);
+  const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reduceMotionRef = useRef(false);
   // Drag state lives in a ref so handlers stay stable and don't rerender.
-  // `moved` is the maximum pixel distance traveled — used to suppress the
-  // child link's click if the pointer moved enough to count as a drag.
   const dragRef = useRef({
     active: false,
     startX: 0,
@@ -170,11 +213,145 @@ function Filmstrip({
     moved: 0,
     pointerId: 0,
   });
+  const [playingIndices, setPlayingIndices] = useState<Set<number>>(
+    () => new Set(),
+  );
+  /** Which duplicated row (0 or 1) should own video decode — avoids twin HLS for the same slug. */
+  const [videoDup, setVideoDup] = useState(0);
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => {
+      const v = mq.matches;
+      reduceMotionRef.current = v;
+      setReduceMotion(v);
+    };
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  const pauseAutoScroll = useCallback(() => {
+    autoPausedRef.current = true;
+    if (resumeTimerRef.current) {
+      clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleResume = useCallback(() => {
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    resumeTimerRef.current = setTimeout(() => {
+      autoPausedRef.current = false;
+      resumeTimerRef.current = null;
+    }, 2800);
+  }, []);
+
+  const syncActiveAndPlaying = useCallback(
+    (strip: HTMLElement) => {
+      const sr = strip.getBoundingClientRect();
+      if (sr.width < 8) return;
+      const center = sr.left + sr.width / 2;
+      const byIndex = new Map<number, number>();
+      strip.querySelectorAll<HTMLElement>("a[data-filmframe]").forEach((node) => {
+        const r = node.getBoundingClientRect();
+        if (r.width < 4) return;
+        const overlaps = r.right > sr.left && r.left < sr.right;
+        if (!overlaps) return;
+        const mid = (r.left + r.right) / 2;
+        const dist = Math.abs(mid - center);
+        const idx = Number(node.dataset.filmframe);
+        if (!Number.isFinite(idx)) return;
+        const prev = byIndex.get(idx);
+        if (prev === undefined || dist < prev) byIndex.set(idx, dist);
+      });
+      const sorted = [...byIndex.entries()].sort((a, b) => a[1] - b[1]);
+      const nextActive = sorted[0]?.[0] ?? 0;
+      setActiveIdx((prev) => (prev === nextActive ? prev : nextActive));
+
+      const nextPlaying = new Set<number>();
+      for (const [idx] of sorted) {
+        if (WORKS[idx]?.video && nextPlaying.size < FILMSTRIP_MAX_PLAYING) {
+          nextPlaying.add(idx);
+        }
+      }
+      setPlayingIndices((prev) =>
+        setsEqual(prev, nextPlaying) ? prev : nextPlaying,
+      );
+    },
+    [setActiveIdx],
+  );
+
+  // Continuous slow scroll + seamless loop (duplicate row), ticker-style.
+  // useLayoutEffect so refs are attached before we read scrollWidth / start rAF.
+  useLayoutEffect(() => {
+    if (reduceMotion) return;
+    const strip = stripRef.current;
+    const inner = innerRef.current;
+    if (!strip || !inner) return;
+
+    let cancelled = false;
+    let last = performance.now();
+    let n = 0;
+
+    const tick = (now: number) => {
+      if (cancelled) return;
+      const dt = Math.min(40, now - last);
+      last = now;
+      const el = stripRef.current;
+      const inn = innerRef.current;
+      if (el && inn) {
+        const loopW = inn.scrollWidth / 2;
+        const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+        if (loopW > 2) {
+          const half = el.scrollLeft >= loopW - 0.5 ? 1 : 0;
+          setVideoDup((d) => (d === half ? d : half));
+        }
+        if (
+          loopW > 2 &&
+          maxScroll > 0 &&
+          !autoPausedRef.current &&
+          !reduceMotionRef.current
+        ) {
+          let next = el.scrollLeft + (FILMSTRIP_AUTO_SCROLL_PX * dt) / 1000;
+          // Seamless loop: second half of the inner row duplicates the first.
+          while (next >= loopW) next -= loopW;
+          el.scrollLeft = Math.max(0, next);
+        }
+        n++;
+        if (n % 5 === 0) syncActiveAndPlaying(el);
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, [reduceMotion, syncActiveAndPlaying]);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      const el = stripRef.current;
+      if (el) syncActiveAndPlaying(el);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [syncActiveAndPlaying]);
+
+  useEffect(() => {
+    return () => {
+      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+      cancelAnimationFrame(scrollSyncRaf.current);
+    };
+  }, []);
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const el = stripRef.current;
     if (!el) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
+    pauseAutoScroll();
     dragRef.current = {
       active: true,
       startX: e.clientX,
@@ -206,6 +383,26 @@ function Filmstrip({
     } catch {}
     d.active = false;
     el.removeAttribute("data-dragging");
+    syncActiveAndPlaying(el);
+    scheduleResume();
+  };
+
+  const onScrollStrip = () => {
+    const el = stripRef.current;
+    const inn = innerRef.current;
+    if (!el) return;
+    // Auto-scroll path already syncs in the rAF loop; only hook scroll when
+    // the user is driving (reduced motion, paused, or manual wheel/drag).
+    if (!reduceMotionRef.current && !autoPausedRef.current) return;
+    if (inn) {
+      const loopW = inn.scrollWidth / 2;
+      if (loopW > 2) {
+        const half = el.scrollLeft >= loopW - 0.5 ? 1 : 0;
+        setVideoDup((d) => (d === half ? d : half));
+      }
+    }
+    cancelAnimationFrame(scrollSyncRaf.current);
+    scrollSyncRaf.current = requestAnimationFrame(() => syncActiveAndPlaying(el));
   };
 
   // Convert vertical wheel deltas into horizontal scroll within the strip,
@@ -216,12 +413,15 @@ function Filmstrip({
     if (!el) return;
     const delta = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : 0;
     if (delta === 0) return;
+    pauseAutoScroll();
+    scheduleResume();
     const max = el.scrollWidth - el.clientWidth;
     const atStart = el.scrollLeft <= 0 && delta < 0;
     const atEnd = el.scrollLeft >= max && delta > 0;
     if (atStart || atEnd) return;
     el.scrollLeft += delta;
     e.preventDefault();
+    syncActiveAndPlaying(el);
   };
 
   const suppressClickIfDragged = () => dragRef.current.moved > 5;
@@ -246,6 +446,8 @@ function Filmstrip({
       return;
     }
     e.preventDefault();
+    pauseAutoScroll();
+    scheduleResume();
     setActiveIdx(next);
     const frame = el.querySelector<HTMLElement>(
       `[data-filmframe="${next}"]`,
@@ -257,6 +459,7 @@ function Filmstrip({
         behavior: "smooth",
       });
     }
+    window.setTimeout(() => syncActiveAndPlaying(el), 320);
   };
 
   return (
@@ -302,7 +505,9 @@ function Filmstrip({
             </Mono>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <Mono style={{ color: "var(--fg-tertiary)" }}>DRAG OR ↔ TO SCAN</Mono>
+            <Mono style={{ color: "var(--fg-tertiary)" }}>
+              {reduceMotion ? "↔ TO SCAN" : "AUTO · DRAG OR ↔ TO PAUSE"}
+            </Mono>
             <Mono style={{ color: "var(--fg-secondary)" }}>
               FRAME {String(activeIdx + 1).padStart(2, "0")} /{" "}
               {String(WORKS.length).padStart(2, "0")}
@@ -314,7 +519,11 @@ function Filmstrip({
           ref={stripRef}
           className="filmstrip-scroll"
           role="region"
-          aria-label="Timeline filmstrip — scroll or use arrow keys"
+          aria-label={
+            reduceMotion
+              ? "Timeline filmstrip — use arrow keys or drag to scroll"
+              : "Timeline filmstrip — auto-scrolling; drag or wheel to pause"
+          }
           tabIndex={0}
           onKeyDown={onKeyDown}
           onPointerDown={onPointerDown}
@@ -323,6 +532,7 @@ function Filmstrip({
           onPointerCancel={endDrag}
           onLostPointerCapture={endDrag}
           onWheel={onWheel}
+          onScroll={onScrollStrip}
           style={{
             overflowX: "auto",
             overflowY: "hidden",
@@ -337,6 +547,8 @@ function Filmstrip({
           }}
         >
           <div
+            ref={innerRef}
+            className="filmstrip-inner"
             style={{
               display: "grid",
               gridAutoFlow: "column",
@@ -345,18 +557,21 @@ function Filmstrip({
               paddingRight: 60,
             }}
           >
-            {WORKS.map((w, i) => (
-              <FilmFrame
-                key={w.slug}
-                w={w}
-                index={i}
-                active={i === activeIdx}
-                onHover={() => {
-                  if (!dragRef.current.active) setActiveIdx(i);
-                }}
-                suppressClickIfDragged={suppressClickIfDragged}
-              />
-            ))}
+            {[0, 1].map((dup) =>
+              WORKS.map((w, i) => (
+                <FilmFrame
+                  key={`${w.slug}-${dup}`}
+                  w={w}
+                  index={i}
+                  active={i === activeIdx}
+                  playVideo={playingIndices.has(i) && dup === videoDup}
+                  onHover={() => {
+                    if (!dragRef.current.active) setActiveIdx(i);
+                  }}
+                  suppressClickIfDragged={suppressClickIfDragged}
+                />
+              )),
+            )}
           </div>
         </div>
       </div>
@@ -406,6 +621,19 @@ function Filmstrip({
 
         .filmstrip-scroll[data-dragging="true"] { cursor: grabbing; }
         .filmstrip-scroll[data-dragging="true"] a { cursor: grabbing; }
+
+        /* Film frames: slightly narrower on small screens so one column
+           + sidebar doesn’t feel pinched; still scrolls horizontally. */
+        @media (max-width: 900px) {
+          .filmstrip-inner {
+            grid-auto-columns: min(280px, 78vw) !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .filmstrip-inner {
+            grid-auto-columns: min(260px, 85vw) !important;
+          }
+        }
       `}</style>
     </div>
   );
@@ -415,12 +643,15 @@ function FilmFrame({
   w,
   index,
   active,
+  playVideo,
   onHover,
   suppressClickIfDragged,
 }: {
   w: Work;
   index: number;
   active: boolean;
+  /** Muted preview — up to FILMSTRIP_MAX_PLAYING tiles nearest strip center. */
+  playVideo: boolean;
   onHover: () => void;
   suppressClickIfDragged: () => boolean;
 }) {
@@ -472,7 +703,7 @@ function FilmFrame({
         {w.video ? (
           <HlsVideo
             src={w.video}
-            playing={active}
+            playing={playVideo}
             ariaLabel={`${w.title} — motion preview`}
           />
         ) : (

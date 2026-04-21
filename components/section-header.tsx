@@ -14,31 +14,45 @@ type SectionHeaderProps = {
  */
 export function SectionHeader({ index, prefix = "INDEX", meta, children }: SectionHeaderProps) {
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(160px, 1fr) 2fr",
-        gap: 32,
-        borderTop: "1px solid var(--fg-primary)",
-        paddingTop: 18,
-        marginBottom: 40,
-      }}
-    >
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+    <div className="section-header-grid">
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
         <Mono>
           {prefix} · {index}
           {meta ? ` · ${meta}` : ""}
         </Mono>
       </div>
       <h2
-        className="t-h2"
+        className="t-h2 section-header-title"
         style={{
           fontWeight: 500,
           lineHeight: 1.08,
+          minWidth: 0,
         }}
       >
         {children}
       </h2>
+      <style>{`
+        .section-header-grid {
+          display: grid;
+          grid-template-columns: minmax(140px, 1fr) minmax(0, 2fr);
+          gap: clamp(16px, 4vw, 32px);
+          border-top: 1px solid var(--fg-primary);
+          padding-top: 18px;
+          margin-bottom: 40px;
+        }
+        @media (max-width: 640px) {
+          .section-header-grid {
+            grid-template-columns: 1fr;
+            gap: 14px;
+            padding-top: 14px;
+            margin-bottom: 28px;
+          }
+          .section-header-title {
+            text-align: left;
+            font-size: clamp(22px, 6.5vw, 28px) !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
