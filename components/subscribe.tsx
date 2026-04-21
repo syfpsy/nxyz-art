@@ -183,7 +183,11 @@ function SubscribeForm({ compact = false }: { compact?: boolean }) {
           display: "flex",
           alignItems: "stretch",
           gap: 0,
-          border: "1px solid var(--border-subtle)",
+          // Compact (footer) variant sits on the always-dark inverse stripe,
+          // so its hairline must be drawn from the on-inverse scale.
+          border: `1px solid ${
+            compact ? "var(--border-on-inverse-strong)" : "var(--border-subtle)"
+          }`,
           borderRadius: 10,
           overflow: "hidden",
           background: compact ? "rgba(255,255,255,0.04)" : "var(--bg-elevated)",

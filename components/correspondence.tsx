@@ -50,7 +50,10 @@ export function Correspondence({ withGrain = false }: Props) {
         >
           <div
             style={{
-              border: "1px solid var(--border-inverse)",
+              // The inner address card is always #0F1115. Its hairlines
+              // come from the on-inverse scale so they read against the
+              // panel regardless of the surrounding section.
+              border: "1px solid var(--border-on-inverse-subtle)",
               borderRadius: 4,
               padding: 20,
               display: "flex",
@@ -72,7 +75,7 @@ export function Correspondence({ withGrain = false }: Props) {
               <Mono style={{ color: "var(--accent)" }}>· OPEN</Mono>
             </div>
             <Wordmark variant="full" tone="dark" size={26} />
-            <div style={{ height: 1, background: "var(--border-inverse)" }} />
+            <div style={{ height: 1, background: "var(--border-on-inverse-subtle)" }} />
             <div
               style={{
                 display: "flex",
@@ -83,7 +86,7 @@ export function Correspondence({ withGrain = false }: Props) {
               <a
                 href={`mailto:${STUDIO.email}`}
                 style={{
-                  color: "var(--fg-inverse)",
+                  color: "var(--fg-on-inverse)",
                   fontFamily: "var(--font-sans)",
                   fontSize: 17,
                   fontWeight: 500,
@@ -142,13 +145,17 @@ export function Correspondence({ withGrain = false }: Props) {
                 fontSize: 16,
                 padding: "14px 20px",
                 borderRadius: 10,
+                // The pill sits on the always-dark correspondence stripe.
+                // Its face uses the inverse foreground (always light) and
+                // its text uses the always-dark ink — hardcoded so dark
+                // mode doesn't flip it to light-on-light.
                 background: "var(--fg-inverse)",
-                color: "var(--fg-primary)",
+                color: "#111214",
                 textDecoration: "none",
               }}
             >
               Write to the studio{" "}
-              <Mono style={{ color: "var(--fg-tertiary)", fontSize: 10 }}>↵</Mono>
+              <Mono style={{ color: "rgba(17,18,20,0.55)", fontSize: 10 }}>↵</Mono>
             </a>
             <Mono style={{ color: "var(--fg-on-inverse-tertiary)" }}>
               {STUDIO.status.replySla}
@@ -161,7 +168,7 @@ export function Correspondence({ withGrain = false }: Props) {
               display: "grid",
               gridTemplateColumns: "repeat(3, 1fr)",
               gap: 18,
-              borderTop: "1px solid var(--border-inverse)",
+              borderTop: "1px solid var(--border-on-inverse-subtle)",
               paddingTop: 18,
             }}
           >

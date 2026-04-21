@@ -39,9 +39,14 @@ export function StudioMap({ tone = "default", radius = 0.008 }: StudioMapProps) 
   )}&ll=${lat},${lng}`;
 
   const inverse = tone === "inverse";
-  const fg = inverse ? "var(--fg-inverse)" : "var(--fg-primary)";
+  // On the inverse variant, every read-out sits on the always-dark
+  // #0F1115 panel, so we draw from the on-inverse scale (non-flipping).
+  // The default variant uses theme-adaptive tokens.
+  const fg = inverse ? "var(--fg-on-inverse)" : "var(--fg-primary)";
   const fgSoft = inverse ? "var(--fg-on-inverse-tertiary)" : "var(--fg-tertiary)";
-  const border = inverse ? "var(--border-inverse)" : "var(--border-subtle)";
+  const border = inverse
+    ? "var(--border-on-inverse-subtle)"
+    : "var(--border-subtle)";
   const panelBg = inverse ? "#0F1115" : "var(--bg-elevated)";
 
   return (
@@ -269,8 +274,11 @@ function MapLink({
         textTransform: "uppercase",
         padding: "6px 10px",
         borderRadius: 999,
-        border: `1px solid ${inverse ? "var(--border-inverse)" : "var(--border-subtle)"}`,
-        color: inverse ? "var(--fg-inverse)" : "var(--fg-primary)",
+        // Inverse pills live on the always-dark #0F1115 panel, so both
+        // border and ink must read against that surface. The default-tone
+        // variant stays on theme-adaptive tokens.
+        border: `1px solid ${inverse ? "var(--border-on-inverse-strong)" : "var(--border-subtle)"}`,
+        color: inverse ? "var(--fg-on-inverse)" : "var(--fg-primary)",
         textDecoration: "none",
         whiteSpace: "nowrap",
       }}

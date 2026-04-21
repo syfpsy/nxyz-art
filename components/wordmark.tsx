@@ -19,8 +19,11 @@ export function Wordmark({
   accentDot = true,
   style,
 }: WordmarkProps) {
-  const fg = tone === "dark" ? "var(--fg-inverse)" : "var(--fg-primary)";
-  const sub = tone === "dark" ? "var(--fg-on-inverse-secondary)" : "var(--fg-secondary)";
+  // `tone="dark"` renders on the always-dark inverse surface, so both
+  // tokens are pulled from the non-flipping on-inverse scale.
+  const fg = tone === "dark" ? "var(--fg-on-inverse)" : "var(--fg-primary)";
+  const sub =
+    tone === "dark" ? "var(--fg-on-inverse-secondary)" : "var(--fg-secondary)";
 
   return (
     <span

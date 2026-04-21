@@ -14,7 +14,12 @@ export function Footer() {
         padding: "40px 24px 32px",
         background: "var(--bg-inverse)",
         color: "var(--fg-inverse)",
-        borderTop: "1px solid var(--border-inverse)",
+        // The top edge must read against whatever lives above it in
+        // both themes: in light mode the preceding section is usually
+        // light; in dark mode it's dark. The on-inverse hairline is
+        // measured off the footer's own dark surface, so it stays
+        // visible from below regardless of context.
+        borderTop: "1px solid var(--border-on-inverse-subtle)",
         overflow: "hidden",
       }}
     >

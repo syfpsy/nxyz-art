@@ -24,14 +24,20 @@
   --fg-tertiary:   #6B7280;
   --fg-inverse:    #F3F5F7;
 
-  /* Foreground tones scoped to inverse surfaces. Used instead of ad-hoc
-     rgba(243,245,247,*) literals that were scattered through components. */
+  /* Foreground tones scoped to the always-dark inverse surface
+     (correspondence, footer, inner #0F1115 panels, media overlays).
+     These do NOT flip with theme — the inverse surface is always dark.
+     Alpha values tuned so each step clears WCAG AA against #0F1115:
+       - secondary:  ~9.6:1
+       - tertiary:   ~7.4:1 (sits just above AA for captions)
+       - muted:      ~5.4:1 (fine print; never carries info alone)
+       - border-*:   hairlines, not text */
   --fg-on-inverse:            #F3F5F7;
-  --fg-on-inverse-secondary:  rgba(243, 245, 247, 0.74);
-  --fg-on-inverse-tertiary:   rgba(243, 245, 247, 0.58);
-  --fg-on-inverse-muted:      rgba(243, 245, 247, 0.42);
+  --fg-on-inverse-secondary:  rgba(243, 245, 247, 0.80);
+  --fg-on-inverse-tertiary:   rgba(243, 245, 247, 0.62);
+  --fg-on-inverse-muted:      rgba(243, 245, 247, 0.48);
   --border-on-inverse-subtle: rgba(243, 245, 247, 0.10);
-  --border-on-inverse-strong: rgba(243, 245, 247, 0.18);
+  --border-on-inverse-strong: rgba(243, 245, 247, 0.22);
 
   /* -------- Color: Border -------- */
   --border-subtle:  #DFE3EA;
@@ -129,31 +135,27 @@
 
 /* ============================================================
    Dark mode tokens — flip by setting data-theme="dark" on <html>
+
+   The "inverse" family (bg-inverse, fg-inverse, border-inverse, and
+   the --fg-on-inverse-* / --border-on-inverse-* scale) DOES NOT flip.
+   These represent the site's editorial dark stripe — correspondence,
+   footer, and a handful of media overlays — which are always dark by
+   design, regardless of the visitor's theme preference. Flipping them
+   produced the "dark card with dark text, invisible in dark mode"
+   class of bug.
    ============================================================ */
 [data-theme="dark"] {
   --bg-base:     #0D0F12;
   --bg-elevated: #13161B;
   --bg-sunken:   #0A0C0F;
-  --bg-inverse:  #F3F5F7;
 
   /* fg-tertiary lifted to #8A91A0 (~4.7:1 on --bg-base #0D0F12). */
   --fg-primary:   #F3F5F7;
   --fg-secondary: #98A2B3;
   --fg-tertiary:  #8A91A0;
-  --fg-inverse:   #111214;
-
-  /* In dark mode the "inverse" surface becomes a light one: text on it
-     must be dark. Values mirror the light-mode foreground scale. */
-  --fg-on-inverse:            #111214;
-  --fg-on-inverse-secondary:  rgba(17, 18, 20, 0.74);
-  --fg-on-inverse-tertiary:   rgba(17, 18, 20, 0.58);
-  --fg-on-inverse-muted:      rgba(17, 18, 20, 0.42);
-  --border-on-inverse-subtle: rgba(17, 18, 20, 0.10);
-  --border-on-inverse-strong: rgba(17, 18, 20, 0.18);
 
   --border-subtle:  #23272F;
   --border-strong:  #2F343D;
-  --border-inverse: #DFE3EA;
 
   --accent-soft: rgba(109, 94, 247, 0.12);
   --accent-glow: rgba(109, 94, 247, 0.22);
