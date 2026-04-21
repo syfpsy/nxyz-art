@@ -17,6 +17,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/lab",
     "/writing",
     "/colophon",
+    "/letter",
+    "/changelog",
   ];
 
   return [

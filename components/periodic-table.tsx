@@ -1,3 +1,4 @@
+import { countPeriodicFromWorks } from "@/lib/periodic-counts";
 import { Mono } from "./mono";
 import { SectionHeader } from "./section-header";
 
@@ -5,23 +6,22 @@ type Element = {
   n: string;
   full: string;
   cat: string;
-  count: number;
   accent?: boolean;
 };
 
 const ELEMENTS: Element[] = [
-  { n: "Mt", full: "Motion",        cat: "moving image", count: 14, accent: true },
-  { n: "Ti", full: "Title design",  cat: "moving image", count:  6 },
-  { n: "Id", full: "Identity",      cat: "systems",      count:  9 },
-  { n: "Ty", full: "Type design",   cat: "systems",      count:  4 },
-  { n: "Ui", full: "Interface",     cat: "product",      count:  7 },
-  { n: "Pr", full: "Prototype",     cat: "product",      count: 12, accent: true },
-  { n: "Ed", full: "Editorial",     cat: "publications", count:  5 },
-  { n: "Ar", full: "Archive",       cat: "publications", count:  3 },
-  { n: "Ex", full: "Experiment",    cat: "research",     count: 22 },
-  { n: "Ss", full: "Sound",         cat: "research",     count:  2 },
-  { n: "Tl", full: "Tool",          cat: "research",     count:  4 },
-  { n: "Cd", full: "Creative dir.", cat: "direction",    count: 18, accent: true },
+  { n: "Mt", full: "Motion", cat: "moving image", accent: true },
+  { n: "Ti", full: "Title design", cat: "moving image" },
+  { n: "Id", full: "Identity", cat: "systems" },
+  { n: "Ty", full: "Type design", cat: "systems" },
+  { n: "Ui", full: "Interface", cat: "product" },
+  { n: "Pr", full: "Prototype", cat: "product", accent: true },
+  { n: "Ed", full: "Editorial", cat: "publications" },
+  { n: "Ar", full: "Archive", cat: "publications" },
+  { n: "Ex", full: "Experiment", cat: "research" },
+  { n: "Ss", full: "Sound", cat: "research" },
+  { n: "Tl", full: "Tool", cat: "research" },
+  { n: "Cd", full: "Creative dir.", cat: "direction", accent: true },
 ];
 
 /**
@@ -29,6 +29,7 @@ const ELEMENTS: Element[] = [
  * One of the most recognizable components in the prototype.
  */
 export function PeriodicTable() {
+  const counts = countPeriodicFromWorks();
   return (
     <section
       style={{
@@ -37,9 +38,10 @@ export function PeriodicTable() {
       }}
     >
       <div style={{ maxWidth: "var(--container-max)", margin: "0 auto" }}>
-        <SectionHeader index="DISCIPLINES" prefix="APPENDIX" meta="12 practices">
-          Twelve practices, one studio. Highlighted in{" "}
-          <span style={{ color: "var(--accent)" }}>violet</span> are active this quarter.
+        <SectionHeader index="DISCIPLINES" prefix="APPENDIX" meta="Live counts from archive">
+          Twelve practices, one studio. Counts infer how many works touch each practice
+          (keywords in kind, role, and summary). Highlighted in{" "}
+          <span style={{ color: "var(--accent)" }}>violet</span> are the three emphasis tiles.
         </SectionHeader>
 
         <div
@@ -51,6 +53,7 @@ export function PeriodicTable() {
           }}
         >
           {ELEMENTS.map((el) => {
+            const count = counts[el.n] ?? 0;
             // Accent tiles pull their ink from --accent-on-soft, which flips
             // to a lifted violet in dark mode. This keeps the tile readable
             // when --accent-soft becomes a translucent tint over near-black.
@@ -80,7 +83,7 @@ export function PeriodicTable() {
               >
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <Mono style={{ color: accentInk, fontSize: 9 }}>
-                    {String(el.count).padStart(3, "0")}
+                    {String(count).padStart(3, "0")}
                   </Mono>
                   <Mono style={{ color: accentInk, fontSize: 9 }}>{el.cat}</Mono>
                 </div>

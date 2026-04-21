@@ -11,8 +11,8 @@ import { commitFiles } from "@/lib/github-commit";
  * - Dev: writes straight to content/*.json, picked up by HMR and the
  *   running build.
  * - Prod: commits to GitHub via the Git Data API (one atomic commit for
- *   both files) so Vercel rebuilds and serves the new content within
- *   ~30s. The filesystem on Vercel is read-only at runtime.
+ *   works, products, and people) so Vercel rebuilds and serves the new
+ *   content within ~30s. The filesystem on Vercel is read-only at runtime.
  */
 
 export const runtime = "nodejs";
@@ -21,6 +21,9 @@ export const dynamic = "force-dynamic";
 type Body = {
   works?: unknown;
   products?: unknown;
+  people?: unknown;
+  /** Appended to GitHub commit body in production only (max ~500 chars). */
+  commitNote?: unknown;
 };
 
 function isString(v: unknown): v is string {
@@ -39,6 +42,12 @@ function validateWork(w: unknown, i: number): string | null {
     return `works[${i}].tone must be one of light|soft|dark|ui`;
   if (!Array.isArray(r.role)) return `works[${i}].role must be an array`;
   if (!isString(r.summary)) return `works[${i}].summary required`;
+  if (r.personSlugs !== undefined) {
+    if (!Array.isArray(r.personSlugs))
+      return `works[${i}].personSlugs must be an array of strings if set`;
+    if (!r.personSlugs.every((x) => isString(x)))
+      return `works[${i}].personSlugs entries must be strings`;
+  }
   return null;
 }
 
@@ -62,6 +71,47 @@ function validateProduct(p: unknown, i: number): string | null {
   )
     return `products[${i}].status invalid`;
   if (!isString(r.accent)) return `products[${i}].accent required`;
+  return null;
+}
+
+function validatePerson(p: unknown, i: number): string | null {
+  if (!p || typeof p !== "object") return `people[${i}] is not an object`;
+  const r = p as Record<string, unknown>;
+  if (!isString(r.slug) || !r.slug) return `people[${i}].slug required`;
+  if (!isString(r.n)) return `people[${i}].n required`;
+  if (!isString(r.name)) return `people[${i}].name required`;
+  if (!isString(r.role)) return `people[${i}].role required`;
+  if (!isString(r.tagline)) return `people[${i}].tagline required`;
+  if (!Array.isArray(r.bio) || !r.bio.every((x) => isString(x)))
+    return `people[${i}].bio must be an array of strings`;
+  if (r.photoSrc !== null && (typeof r.photoSrc !== "string" || !r.photoSrc))
+    return `people[${i}].photoSrc must be a non-empty string or null`;
+  if (!Array.isArray(r.links)) return `people[${i}].links must be an array`;
+  for (let j = 0; j < r.links.length; j++) {
+    const l = (r.links as unknown[])[j];
+    if (!l || typeof l !== "object")
+      return `people[${i}].links[${j}] is not an object`;
+    const o = l as Record<string, unknown>;
+    if (!isString(o.label) || !isString(o.href))
+      return `people[${i}].links[${j}].label and .href are required strings`;
+  }
+  if (!Array.isArray(r.workSlugs) || !r.workSlugs.every((x) => isString(x)))
+    return `people[${i}].workSlugs must be an array of strings`;
+  if (r.otherWork !== undefined) {
+    if (!Array.isArray(r.otherWork)) return `people[${i}].otherWork must be an array`;
+    for (let j = 0; j < r.otherWork.length; j++) {
+      const ow = (r.otherWork as unknown[])[j];
+      if (!ow || typeof ow !== "object")
+        return `people[${i}].otherWork[${j}] is not an object`;
+      const o = ow as Record<string, unknown>;
+      if (!isString(o.title) || !isString(o.href))
+        return `people[${i}].otherWork[${j}].title and .href are required strings`;
+      if (o.year !== undefined && !isString(o.year))
+        return `people[${i}].otherWork[${j}].year must be a string if set`;
+      if (o.note !== undefined && !isString(o.note))
+        return `people[${i}].otherWork[${j}].note must be a string if set`;
+    }
+  }
   return null;
 }
 
@@ -92,9 +142,16 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  if (!Array.isArray(body.works) || !Array.isArray(body.products)) {
+  if (
+    !Array.isArray(body.works) ||
+    !Array.isArray(body.products) ||
+    !Array.isArray(body.people)
+  ) {
     return NextResponse.json(
-      { ok: false, error: "Body must include `works` and `products` arrays." },
+      {
+        ok: false,
+        error: "Body must include `works`, `products`, and `people` arrays.",
+      },
       { status: 400 },
     );
   }
@@ -106,9 +163,25 @@ export async function POST(request: Request) {
     const err = validateProduct(body.products[i], i);
     if (err) return NextResponse.json({ ok: false, error: err }, { status: 400 });
   }
+  for (let i = 0; i < body.people.length; i++) {
+    const err = validatePerson(body.people[i], i);
+    if (err) return NextResponse.json({ ok: false, error: err }, { status: 400 });
+  }
+
+  let commitNote = "";
+  if (body.commitNote !== undefined && body.commitNote !== null) {
+    if (typeof body.commitNote !== "string") {
+      return NextResponse.json(
+        { ok: false, error: "`commitNote` must be a string if provided." },
+        { status: 400 },
+      );
+    }
+    commitNote = body.commitNote.trim().slice(0, 500);
+  }
 
   const worksJson = JSON.stringify(body.works, null, 2) + "\n";
   const productsJson = JSON.stringify(body.products, null, 2) + "\n";
+  const peopleJson = JSON.stringify(body.people, null, 2) + "\n";
 
   // 3. Dev path — write to the local repo so HMR picks it up.
   const isDev = process.env.NODE_ENV !== "production";
@@ -116,9 +189,11 @@ export async function POST(request: Request) {
     try {
       const worksPath = path.join(process.cwd(), "content", "works.json");
       const productsPath = path.join(process.cwd(), "content", "products.json");
+      const peoplePath = path.join(process.cwd(), "content", "people.json");
       await Promise.all([
         fs.writeFile(worksPath, worksJson, "utf8"),
         fs.writeFile(productsPath, productsJson, "utf8"),
+        fs.writeFile(peoplePath, peopleJson, "utf8"),
       ]);
       return NextResponse.json({
         ok: true,
@@ -151,16 +226,21 @@ export async function POST(request: Request) {
   }
 
   try {
+    const noteBlock =
+      commitNote.length > 0
+        ? `\n\n— Note —\n${commitNote}`
+        : "";
     const result = await commitFiles({
       token: ghToken,
       repo: ghRepo,
       branch: ghBranch,
-      message: `admin: update works & products\n\nBy ${session.email} via /admin.`,
+      message: `admin: update works, products & people\n\nBy ${session.email} via /admin.${noteBlock}`,
       authorName: "nxyz admin",
       authorEmail: session.email,
       files: [
         { path: "site/content/works.json", content: worksJson },
         { path: "site/content/products.json", content: productsJson },
+        { path: "site/content/people.json", content: peopleJson },
       ],
     });
     return NextResponse.json({

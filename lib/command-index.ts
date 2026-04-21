@@ -32,6 +32,8 @@ export function buildCommandIndex(): CommandItem[] {
     { id: "p-lab", kind: "page", label: "Go to: experiments lab", href: "/lab" },
     { id: "p-writing", kind: "page", label: "Go to: writing", href: "/writing" },
     { id: "p-colophon", kind: "page", label: "Go to: colophon", href: "/colophon" },
+    { id: "p-letter", kind: "page", label: "Go to: slow correspondence (letter)", href: "/letter" },
+    { id: "p-changelog", kind: "page", label: "Go to: changelog", href: "/changelog" },
   ];
 
   const works = WORKS.map<CommandItem>((w) => ({

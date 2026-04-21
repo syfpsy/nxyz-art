@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Read current works + products JSON from the deployed filesystem.
+ * Read current works, products, and people JSON from the deployed filesystem.
  *
  * Works in production because Vercel ships the content JSON with the
  * bundle, and the serverless runtime can read its own files. Writes go
@@ -39,14 +39,16 @@ export async function GET() {
   }
 
   try {
-    const [works, products] = await Promise.all([
+    const [works, products, people] = await Promise.all([
       readJson("works.json"),
       readJson("products.json"),
+      readJson("people.json"),
     ]);
     return NextResponse.json({
       ok: true,
       works,
       products,
+      people,
       env: process.env.NODE_ENV !== "production" ? "dev" : "prod",
     });
   } catch (err) {

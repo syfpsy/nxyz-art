@@ -1,0 +1,19 @@
+{
+  "entries": [
+    {
+      "date": "2026-04-21",
+      "title": "Studio layer: masthead, table, letter, changelog, admin",
+      "detail": "Works carry creator slugs (catalog + filmstrip attribution). Rotating byline from people; filmstrip deep link ?frame=work-slug, chapter buttons, keys 1–9, creator avatar pop; catalog stamps + filed-under chips; periodic table counts from archive; editorial cross-links on work and people pages; footer rotation line; /letter and /changelog; admin attribution lint + optional deploy note on prod commits."
+    },
+    {
+      "date": "2026-04-20",
+      "title": "Content JSON workflow",
+      "detail": "Session-gated /admin reads and writes content/*.json; production path commits to GitHub for Vercel rebuild."
+    },
+    {
+      "date": "2026-04-18",
+      "title": "People profiles",
+      "detail": "people.json drives /people routes, command palette, and cross-links from the studio archive."
+    }
+  ]
+}

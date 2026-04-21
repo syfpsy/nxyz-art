@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { getWorkCreatorNameLine } from "@/content/people";
 import { WORKS, type Work } from "@/content/works";
+import { WorkAttributionStack } from "@/components/work-attribution";
 import { Mono } from "./mono";
 import { SectionHeader } from "./section-header";
 
@@ -91,23 +93,43 @@ export function Catalog({ index = "A", indexMeta, title, items }: CatalogProps) 
             font-size: 11px !important;
           }
         }
+        .catalog-row-stamped::after {
+          content: "REC · " attr(data-catalog-year);
+          position: absolute;
+          left: 18px;
+          bottom: 10px;
+          font-family: var(--font-mono);
+          font-size: 8px;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+          opacity: 0.12;
+          transform: rotate(-2deg);
+          pointer-events: none;
+          color: var(--fg-primary);
+        }
       `}</style>
     </section>
   );
 }
 
+function filedDecade(y: number) {
+  return `${Math.floor(y / 10) * 10}s`;
+}
+
 function CatalogRow({ w }: { w: Work }) {
+  const creatorLine = getWorkCreatorNameLine(w);
   return (
     <Link
       href={`/work/${w.slug}`}
-      className="hover-row catalog-row"
+      className="hover-row catalog-row catalog-row-stamped"
+      data-catalog-year={String(w.year)}
       style={{
         display: "grid",
         gridTemplateColumns:
           "auto 80px minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr) auto",
         gap: 24,
         alignItems: "center",
-        padding: "18px 22px",
+        padding: "18px 22px 28px 22px",
         background: "var(--bg-elevated)",
         border: "1px solid var(--border-subtle)",
         borderRadius: 4,
@@ -146,19 +168,92 @@ function CatalogRow({ w }: { w: Work }) {
       <div
         className="catalog-title-cell"
         style={{
-          fontFamily: "var(--font-sans)",
-          fontWeight: 600,
-          fontSize: 28,
-          letterSpacing: "-0.025em",
+          position: "relative",
           display: "flex",
-          alignItems: "baseline",
-          gap: 10,
+          flexDirection: "column",
+          alignItems: "flex-start",
+          justifyContent: "center",
+          gap: 4,
+          minWidth: 0,
+          paddingRight: w.personSlugs?.length ? 44 : 0,
         }}
       >
-        {w.title}
-        {w.accent && (
-          <span style={{ color: "var(--accent)", fontSize: 14 }}>●</span>
-        )}
+        <div
+          style={{
+            fontFamily: "var(--font-sans)",
+            fontWeight: 600,
+            fontSize: 28,
+            letterSpacing: "-0.025em",
+            display: "flex",
+            alignItems: "baseline",
+            gap: 10,
+            flexWrap: "wrap",
+            maxWidth: "100%",
+          }}
+        >
+          {w.title}
+          {w.accent && (
+            <span style={{ color: "var(--accent)", fontSize: 14 }}>●</span>
+          )}
+        </div>
+        {creatorLine ? (
+          <Mono
+            style={{
+              color: "var(--fg-tertiary)",
+              fontSize: 12,
+              letterSpacing: "0.06em",
+              lineHeight: 1.35,
+            }}
+          >
+            {creatorLine}
+          </Mono>
+        ) : null}
+        <div
+          aria-hidden
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 6,
+            alignItems: "center",
+            marginTop: 2,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 10,
+              padding: "2px 8px",
+              borderRadius: 999,
+              border: "1px solid var(--border-subtle)",
+              color: "var(--fg-tertiary)",
+              fontFamily: "var(--font-mono)",
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}
+          >
+            {w.tone}
+          </span>
+          <span
+            style={{
+              fontSize: 10,
+              padding: "2px 8px",
+              borderRadius: 999,
+              border: "1px solid var(--border-subtle)",
+              color: "var(--fg-secondary)",
+              fontFamily: "var(--font-sans)",
+              fontWeight: 500,
+            }}
+          >
+            Filed under {filedDecade(w.year)}
+          </span>
+        </div>
+        {w.personSlugs?.length ? (
+          <WorkAttributionStack
+            work={w}
+            size={22}
+            position="top-right"
+            style={{ top: 0, right: 0 }}
+          />
+        ) : null}
       </div>
       <Mono style={{ color: "var(--fg-secondary)" }}>{w.kind}</Mono>
       <Mono style={{ color: "var(--fg-tertiary)" }}>

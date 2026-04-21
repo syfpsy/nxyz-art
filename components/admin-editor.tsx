@@ -3,21 +3,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Work, WorkTone } from "@/content/works";
 import type { Product, ProductStatus } from "@/content/products";
+import type { Person, PersonLink, PersonOtherWork } from "@/content/people";
+import { buildAdminWarnings } from "@/lib/admin-warnings";
 import { gumletThumbnail } from "@/lib/video-thumb";
 import { Mono } from "./mono";
 
 /**
- * /admin editor. A single surface for works and products, backed by the
- * session-gated /api/admin/* routes. Edits live in state until saved; an
- * "unsaved changes" banner pins to the bottom so the writer can save or
+ * /admin editor. A single surface for works, products, and people, backed
+ * by the session-gated /api/admin/* routes. Edits live in state until saved;
+ * an "unsaved changes" banner pins to the bottom so the writer can save or
  * discard without scrolling.
  */
 
-type Tab = "works" | "products";
+type Tab = "works" | "products" | "people";
 
 type LoadedData = {
   works: Work[];
   products: Product[];
+  people: Person[];
 };
 
 type Session = {
@@ -329,6 +332,9 @@ function AdminEditor({ session }: { session: Session }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "ok" | "err">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [commitNote, setCommitNote] = useState("");
+  const commitNoteRef = useRef("");
+  commitNoteRef.current = commitNote;
 
   // Initial load from /api/admin/data.
   useEffect(() => {
@@ -340,14 +346,19 @@ function AdminEditor({ session }: { session: Session }) {
           ok: boolean;
           works?: Work[];
           products?: Product[];
+          people?: Person[];
           error?: string;
         };
         if (cancelled) return;
-        if (!json.ok || !json.works || !json.products) {
+        if (!json.ok || !json.works || !json.products || !json.people) {
           setLoadError(json.error ?? "Failed to load content.");
           return;
         }
-        const fresh: LoadedData = { works: json.works, products: json.products };
+        const fresh: LoadedData = {
+          works: json.works,
+          products: json.products,
+          people: json.people,
+        };
         setData(fresh);
         // Deep-clone so the baseline is independent of the editable copy.
         setBaseline(JSON.parse(JSON.stringify(fresh)) as LoadedData);
@@ -365,6 +376,11 @@ function AdminEditor({ session }: { session: Session }) {
     return JSON.stringify(data) !== JSON.stringify(baseline);
   }, [data, baseline]);
 
+  const adminWarnings = useMemo(
+    () => (data ? buildAdminWarnings(data.works, data.people) : []),
+    [data],
+  );
+
   const [lastReceipt, setLastReceipt] = useState<{
     mode: "local" | "github";
     message: string;
@@ -377,7 +393,7 @@ function AdminEditor({ session }: { session: Session }) {
     // muscle-memory ⌘S to burn build minutes.
     if (session.env === "prod") {
       const ok = window.confirm(
-        "Save to live site?\n\nThis commits works.json and products.json to main and triggers a Vercel rebuild (~30s). Continue?",
+        "Save to live site?\n\nThis commits works.json, products.json, and people.json to main in one commit and triggers a single Vercel rebuild (~30s). Continue?",
       );
       if (!ok) return;
     }
@@ -385,10 +401,19 @@ function AdminEditor({ session }: { session: Session }) {
     setSaveError(null);
     setLastReceipt(null);
     try {
+      const payload: Record<string, unknown> = {
+        works: data.works,
+        products: data.products,
+        people: data.people,
+      };
+      const note = commitNoteRef.current.trim();
+      if (session.env === "prod" && note) {
+        payload.commitNote = note;
+      }
       const res = await fetch("/api/admin/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       const json = (await res.json()) as {
         ok: boolean;
@@ -404,6 +429,7 @@ function AdminEditor({ session }: { session: Session }) {
       }
       setSaveStatus("ok");
       setBaseline(JSON.parse(JSON.stringify(data)) as LoadedData);
+      setCommitNote("");
       if (json.mode) {
         setLastReceipt({
           mode: json.mode,
@@ -433,6 +459,7 @@ function AdminEditor({ session }: { session: Session }) {
   const discard = () => {
     if (!baseline) return;
     setData(JSON.parse(JSON.stringify(baseline)) as LoadedData);
+    setCommitNote("");
   };
 
   if (loadError) {
@@ -463,6 +490,7 @@ function AdminEditor({ session }: { session: Session }) {
         {tab === "works" && (
           <WorkList
             works={data.works}
+            allPeople={data.people}
             onChange={(works) => setData({ ...data, works })}
           />
         )}
@@ -480,6 +508,84 @@ function AdminEditor({ session }: { session: Session }) {
           />
         )}
       </div>
+      <div
+        role="tabpanel"
+        id="admin-tabpanel-people"
+        aria-labelledby="admin-tab-people"
+        hidden={tab !== "people"}
+      >
+        {tab === "people" && (
+          <PersonList
+            people={data.people}
+            onChange={(people) => setData({ ...data, people })}
+          />
+        )}
+      </div>
+
+      {adminWarnings.length > 0 && (
+        <div
+          role="status"
+          style={{
+            padding: "14px 16px",
+            border: "1px dashed var(--border-subtle)",
+            borderRadius: 8,
+            background: "var(--bg-base)",
+          }}
+        >
+          <Mono style={{ color: "var(--fg-tertiary)" }}>
+            ATTRIBUTION CHECK (does not block save)
+          </Mono>
+          <ul
+            style={{
+              margin: "10px 0 0",
+              paddingLeft: 18,
+              fontFamily: "var(--font-sans)",
+              fontSize: 13,
+              color: "var(--fg-secondary)",
+              lineHeight: 1.45,
+            }}
+          >
+            {adminWarnings.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {session.env === "prod" && (
+        <label
+          htmlFor="admin-deploy-note"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            maxWidth: 560,
+          }}
+        >
+          <Mono style={{ color: "var(--fg-tertiary)" }}>
+            DEPLOY NOTE (optional — appended to Git commit body)
+          </Mono>
+          <textarea
+            id="admin-deploy-note"
+            value={commitNote}
+            onChange={(e) => setCommitNote(e.target.value)}
+            rows={3}
+            placeholder="e.g. fixed Cassette credits; added collaborator to Field"
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              padding: "10px 12px",
+              border: "1px solid var(--border-subtle)",
+              borderRadius: 8,
+              background: "var(--bg-base)",
+              color: "var(--fg-primary)",
+              fontFamily: "var(--font-sans)",
+              fontSize: 14,
+              resize: "vertical",
+            }}
+          />
+        </label>
+      )}
 
       <SaveBar
         dirty={dirty}
@@ -599,6 +705,7 @@ function TabBar({
   const items: Array<{ id: Tab; label: string; count: number }> = [
     { id: "works", label: "Works", count: counts.works.length },
     { id: "products", label: "Products", count: counts.products.length },
+    { id: "people", label: "People", count: counts.people.length },
   ];
   // Per APG tabs pattern with automatic activation: arrow keys select AND
   // move focus in one motion. We hold refs per tab so we can programmatically
@@ -607,6 +714,7 @@ function TabBar({
   const tabRefs = useRef<Record<Tab, HTMLButtonElement | null>>({
     works: null,
     products: null,
+    people: null,
   });
   const activate = (next: Tab) => {
     setTab(next);
@@ -657,7 +765,7 @@ function TabBar({
             aria-selected={active}
             aria-controls={`admin-tabpanel-${it.id}`}
             tabIndex={active ? 0 : -1}
-            onClick={() => setTab(it.id)}
+            onClick={() => activate(it.id)}
             style={{
               appearance: "none",
               background: active ? "var(--bg-elevated)" : "transparent",
@@ -842,9 +950,11 @@ function ErrorPanel({ children }: { children: React.ReactNode }) {
 
 function WorkList({
   works,
+  allPeople,
   onChange,
 }: {
   works: Work[];
+  allPeople: Person[];
   onChange: (next: Work[]) => void;
 }) {
   const update = (i: number, patch: Partial<Work>) => {
@@ -874,6 +984,7 @@ function WorkList({
       tone: "light",
       role: [],
       summary: "A one-line editorial summary.",
+      personSlugs: [],
     };
     onChange([...works, fresh]);
   };
@@ -886,6 +997,7 @@ function WorkList({
           index={i}
           total={works.length}
           work={w}
+          allPeople={allPeople}
           onChange={(patch) => update(i, patch)}
           onMove={(dir) => move(i, dir)}
           onRemove={() => remove(i)}
@@ -900,6 +1012,7 @@ function WorkRow({
   index,
   total,
   work,
+  allPeople,
   onChange,
   onMove,
   onRemove,
@@ -907,6 +1020,7 @@ function WorkRow({
   index: number;
   total: number;
   work: Work;
+  allPeople: Person[];
   onChange: (patch: Partial<Work>) => void;
   onMove: (dir: -1 | 1) => void;
   onRemove: () => void;
@@ -1023,6 +1137,32 @@ function WorkRow({
             title={work.title}
             onChange={(v) => onChange({ video: v || undefined })}
           />
+        </Field>
+
+        <Field label="Creators (person slugs, comma separated)" span={12}>
+          <Text
+            value={(work.personSlugs ?? []).join(", ")}
+            placeholder="e.g. founding, collaborator"
+            onChange={(v) => {
+              const personSlugs = v
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+              onChange({ personSlugs });
+            }}
+          />
+          {allPeople.length > 0 ? (
+            <Mono
+              style={{
+                color: "var(--fg-tertiary)",
+                marginTop: 6,
+                display: "block",
+                lineHeight: 1.4,
+              }}
+            >
+              Available: {allPeople.map((p) => `${p.slug} (${p.name})`).join(" · ")}
+            </Mono>
+          ) : null}
         </Field>
       </div>
     </div>
@@ -1492,6 +1632,270 @@ function ProductRow({
               onChange({ features: arr.length ? arr : undefined });
             }}
             rows={5}
+          />
+        </Field>
+      </div>
+    </div>
+  );
+}
+
+// -------- People editor ----------------------------------------------------
+
+function personBioToText(b: string[]) {
+  return b.join("\n\n");
+}
+
+function textToPersonBio(t: string): string[] {
+  return t
+    .split(/\n\n+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function personLinksToText(links: PersonLink[]) {
+  return links.map((l) => `${l.label} | ${l.href}`).join("\n");
+}
+
+function textToPersonLinks(t: string): PersonLink[] {
+  return t
+    .split("\n")
+    .map((line) => {
+      const idx = line.indexOf("|");
+      if (idx < 0) return null;
+      const label = line.slice(0, idx).trim();
+      const href = line.slice(idx + 1).trim();
+      if (!label || !href) return null;
+      return { label, href };
+    })
+    .filter((x): x is PersonLink => x !== null);
+}
+
+function otherWorkToText(ow: Person["otherWork"]): string {
+  if (!ow?.length) return "";
+  return ow
+    .map((o) => {
+      const parts: string[] = [o.title, o.href];
+      if (o.year) parts.push(o.year);
+      if (o.note) parts.push(o.note);
+      return parts.join(" | ");
+    })
+    .join("\n");
+}
+
+function textToOtherWork(t: string): Person["otherWork"] {
+  const lines = t
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length === 0) return [];
+  const out: PersonOtherWork[] = [];
+  for (const line of lines) {
+    const parts = line.split("|").map((s) => s.trim());
+    if (parts.length < 2) continue;
+    const [title, href, year, note] = parts;
+    out.push({
+      title: title!,
+      href: href!,
+      year: year || undefined,
+      note: note || undefined,
+    });
+  }
+  return out;
+}
+
+function PersonList({
+  people,
+  onChange,
+}: {
+  people: Person[];
+  onChange: (next: Person[]) => void;
+}) {
+  const update = (i: number, patch: Partial<Person>) => {
+    const next = people.slice();
+    next[i] = { ...next[i], ...patch };
+    onChange(next);
+  };
+  const remove = (i: number) => {
+    if (!window.confirm(`Delete person "${people[i].name}"?`)) return;
+    onChange(people.filter((_, idx) => idx !== i));
+  };
+  const move = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= people.length) return;
+    const next = people.slice();
+    [next[i], next[j]] = [next[j], next[i]];
+    onChange(next);
+  };
+  const add = () => {
+    const n = String(people.length + 1).padStart(2, "0");
+    const fresh: Person = {
+      slug: `new-person-${n}`,
+      n,
+      name: "New person",
+      role: "Role",
+      tagline: "One-line tagline.",
+      bio: ["First paragraph. Add a blank line in the field below to split paragraphs."],
+      photoSrc: null,
+      links: [],
+      workSlugs: [],
+      otherWork: [],
+    };
+    onChange([...people, fresh]);
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {people.map((p, i) => (
+        <PersonRow
+          key={`${p.slug}-${i}`}
+          index={i}
+          total={people.length}
+          person={p}
+          onChange={(patch) => update(i, patch)}
+          onMove={(dir) => move(i, dir)}
+          onRemove={() => remove(i)}
+        />
+      ))}
+      <AddButton onClick={add} label="+ Add person" />
+    </div>
+  );
+}
+
+function PersonRow({
+  index,
+  total,
+  person,
+  onChange,
+  onMove,
+  onRemove,
+}: {
+  index: number;
+  total: number;
+  person: Person;
+  onChange: (patch: Partial<Person>) => void;
+  onMove: (dir: -1 | 1) => void;
+  onRemove: () => void;
+}) {
+  const [photoErr, setPhotoErr] = useState(false);
+  useEffect(() => {
+    setPhotoErr(false);
+  }, [person.photoSrc]);
+
+  return (
+    <div
+      style={{
+        border: "1px solid var(--border-subtle)",
+        borderRadius: 10,
+        background: "var(--bg-elevated)",
+      }}
+    >
+      <RowHeader
+        index={index}
+        total={total}
+        badge={person.n}
+        title={person.name}
+        subtitle={`${person.role} · /people/${person.slug}`}
+        onMove={onMove}
+        onRemove={onRemove}
+      />
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(12, 1fr)",
+          gap: 14,
+          padding: 16,
+        }}
+      >
+        <Field label="Slug" span={3}>
+          <Text value={person.slug} onChange={(v) => onChange({ slug: v })} />
+        </Field>
+        <Field label="Number" span={1}>
+          <Text value={person.n} onChange={(v) => onChange({ n: v })} />
+        </Field>
+        <Field label="Name" span={4}>
+          <Text value={person.name} onChange={(v) => onChange({ name: v })} />
+        </Field>
+        <Field label="Role" span={4}>
+          <Text value={person.role} onChange={(v) => onChange({ role: v })} />
+        </Field>
+
+        <Field label="Tagline" span={12}>
+          <Text
+            value={person.tagline}
+            onChange={(v) => onChange({ tagline: v })}
+          />
+        </Field>
+        <Field
+          label="Photo URL (e.g. /people/slug.jpg) — optional"
+          span={8}
+        >
+          <Text
+            value={person.photoSrc ?? ""}
+            placeholder="empty = no photo"
+            onChange={(v) => {
+              const t = v.trim();
+              onChange({ photoSrc: t ? t : null });
+            }}
+          />
+        </Field>
+        <Field label="Preview" span={4}>
+          {person.photoSrc && !photoErr ? (
+            // Admin-only preview: paths are arbitrary user content, not `next/image` remotePatterns.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={person.photoSrc}
+              alt=""
+              onError={() => setPhotoErr(true)}
+              style={{
+                maxWidth: "100%",
+                maxHeight: 88,
+                objectFit: "cover",
+                borderRadius: 6,
+                border: "1px solid var(--border-subtle)",
+              }}
+            />
+          ) : (
+            <Mono style={{ color: "var(--fg-tertiary)" }}>
+              {person.photoSrc && photoErr ? "Load failed" : "—"}
+            </Mono>
+          )}
+        </Field>
+
+        <Field label="Bio (paragraphs; blank line = new paragraph)" span={12}>
+          <Area
+            value={personBioToText(person.bio)}
+            onChange={(v) => onChange({ bio: textToPersonBio(v) })}
+            rows={6}
+          />
+        </Field>
+        <Field label="Links (one per line: label | url)" span={12}>
+          <Area
+            value={personLinksToText(person.links)}
+            onChange={(v) => onChange({ links: textToPersonLinks(v) })}
+            rows={3}
+          />
+        </Field>
+        <Field label="Work slugs (comma separated, matches works.json)" span={12}>
+          <Text
+            value={person.workSlugs.join(", ")}
+            onChange={(v) =>
+              onChange({
+                workSlugs: v
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean),
+              })
+            }
+          />
+        </Field>
+        <Field
+          label="Other work (one per line: title | url | year | note)"
+          span={12}
+        >
+          <Area
+            value={otherWorkToText(person.otherWork)}
+            onChange={(v) => onChange({ otherWork: textToOtherWork(v) })}
+            rows={4}
           />
         </Field>
       </div>

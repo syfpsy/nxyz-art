@@ -25,6 +25,8 @@ export type Work = {
   // and case-study hero render a muted, looped preview instead of the
   // typographic placeholder.
   video?: string;
+  /** People slugs from `people.json` attributed as creators (photos + names in UI). */
+  personSlugs?: string[];
 };
 
 export const WORKS: Work[] = worksData as Work[];

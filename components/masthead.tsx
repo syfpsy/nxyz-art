@@ -1,16 +1,21 @@
 "use client";
 
 import {
+  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type Dispatch,
   type SetStateAction,
 } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { PEOPLE } from "@/content/people";
 import { WORKS, type Work } from "@/content/works";
+import { WorkAttributionStack } from "./work-attribution";
 import { Mono } from "./mono";
 import { FrameGlyph, frameBackground } from "./frame-glyph";
 import { HlsVideo } from "./hls-video";
@@ -20,7 +25,47 @@ import { HlsVideo } from "./hls-video";
  * a dateline strip above it, then a horizontal filmstrip of works below.
  * Reads like a colophon or gallery nameplate.
  */
-export function Masthead() {
+function StudioByline() {
+  const lines = useMemo(
+    () => PEOPLE.map((p) => p.tagline).filter((t) => t.trim().length > 0),
+    [],
+  );
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (lines.length <= 1) return;
+    const t = window.setInterval(
+      () => setI((n) => (n + 1) % lines.length),
+      9000,
+    );
+    return () => window.clearInterval(t);
+  }, [lines.length]);
+  if (lines.length === 0) return null;
+  return (
+    <div
+      style={{
+        paddingTop: 10,
+        paddingBottom: 12,
+        borderBottom: "1px solid var(--border-subtle)",
+      }}
+    >
+      <Mono
+        style={{
+          fontSize: 12,
+          color: "var(--fg-secondary)",
+          display: "block",
+          lineHeight: 1.55,
+          maxWidth: 720,
+        }}
+      >
+        {lines[i]}
+      </Mono>
+    </div>
+  );
+}
+
+function MastheadInner() {
+  const searchParams = useSearchParams();
+  const initialFrameSlug = searchParams.get("frame");
   const [counter, setCounter] = useState(2481);
   const [activeIdx, setActiveIdx] = useState(0);
 
@@ -65,6 +110,8 @@ export function Masthead() {
           <Mono>VOL · {counter.toString().padStart(5, "0")}</Mono>
           <Mono>FOLIO · A–H</Mono>
         </div>
+
+        <StudioByline />
 
         {/* Oversized typographic wordmark */}
         <div
@@ -161,7 +208,11 @@ export function Masthead() {
 
       {/* Timeline filmstrip */}
       {WORKS.length > 0 && (
-        <Filmstrip activeIdx={activeIdx} setActiveIdx={setActiveIdx} />
+        <Filmstrip
+          activeIdx={activeIdx}
+          setActiveIdx={setActiveIdx}
+          initialFrameSlug={initialFrameSlug}
+        />
       )}
 
       <style>{`
@@ -175,8 +226,42 @@ export function Masthead() {
           }
           .masthead-colophon > div:last-child { text-align: left !important; }
         }
+        @keyframes filmstripCreatorPop {
+          from {
+            opacity: 0.55;
+            transform: scale(0.9);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        .filmstrip-creator-handoff {
+          display: inline-block;
+          animation: filmstripCreatorPop 0.38s var(--ease-standard, ease-out);
+        }
       `}</style>
     </section>
+  );
+}
+
+export function Masthead() {
+  return (
+    <Suspense
+      fallback={
+        <section
+          aria-busy="true"
+          aria-label="Loading masthead"
+          style={{
+            borderBottom: "1px solid var(--border-subtle)",
+            minHeight: 400,
+            background: "var(--bg-base)",
+          }}
+        />
+      }
+    >
+      <MastheadInner />
+    </Suspense>
   );
 }
 
@@ -194,10 +279,13 @@ function setsEqual(a: Set<number>, b: Set<number>) {
 function Filmstrip({
   activeIdx,
   setActiveIdx,
+  initialFrameSlug,
 }: {
   activeIdx: number;
   setActiveIdx: Dispatch<SetStateAction<number>>;
+  initialFrameSlug: string | null;
 }) {
+  const urlAppliedRef = useRef(false);
   const stripRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const autoPausedRef = useRef(false);
@@ -340,6 +428,21 @@ function Filmstrip({
     return () => cancelAnimationFrame(id);
   }, [syncActiveAndPlaying]);
 
+  useLayoutEffect(() => {
+    if (urlAppliedRef.current || !initialFrameSlug) return;
+    const idx = WORKS.findIndex((w) => w.slug === initialFrameSlug);
+    if (idx < 0) return;
+    urlAppliedRef.current = true;
+    setActiveIdx(idx);
+    const run = () => {
+      const strip = stripRef.current;
+      strip
+        ?.querySelector<HTMLElement>(`[data-filmframe="${idx}"]`)
+        ?.scrollIntoView({ inline: "center", block: "nearest", behavior: "auto" });
+    };
+    requestAnimationFrame(() => requestAnimationFrame(run));
+  }, [initialFrameSlug, setActiveIdx]);
+
   useEffect(() => {
     return () => {
       if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
@@ -433,7 +536,7 @@ function Filmstrip({
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const el = stripRef.current;
     if (!el) return;
-    let next = activeIdx;
+    let next: number | null = null;
     if (e.key === "ArrowRight") {
       next = Math.min(WORKS.length - 1, activeIdx + 1);
     } else if (e.key === "ArrowLeft") {
@@ -442,9 +545,11 @@ function Filmstrip({
       next = 0;
     } else if (e.key === "End") {
       next = WORKS.length - 1;
-    } else {
-      return;
+    } else if (/^[1-9]$/.test(e.key)) {
+      const n = parseInt(e.key, 10) - 1;
+      if (n >= 0 && n < WORKS.length) next = n;
     }
+    if (next === null) return;
     e.preventDefault();
     pauseAutoScroll();
     scheduleResume();
@@ -459,6 +564,20 @@ function Filmstrip({
         behavior: "smooth",
       });
     }
+    window.setTimeout(() => syncActiveAndPlaying(el), 320);
+  };
+
+  const jumpToFrame = (next: number) => {
+    const el = stripRef.current;
+    if (!el || next < 0 || next >= WORKS.length) return;
+    pauseAutoScroll();
+    scheduleResume();
+    setActiveIdx(next);
+    el.querySelector<HTMLElement>(`[data-filmframe="${next}"]`)?.scrollIntoView({
+      inline: "center",
+      block: "nearest",
+      behavior: "smooth",
+    });
     window.setTimeout(() => syncActiveAndPlaying(el), 320);
   };
 
@@ -511,6 +630,53 @@ function Filmstrip({
             <Mono style={{ color: "var(--fg-secondary)" }}>
               FRAME {String(activeIdx + 1).padStart(2, "0")} /{" "}
               {String(WORKS.length).padStart(2, "0")}
+            </Mono>
+            <div
+              role="group"
+              aria-label="Jump to work by index"
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 5,
+                marginTop: 10,
+              }}
+            >
+              {WORKS.map((w, i) => (
+                <button
+                  key={w.slug}
+                  type="button"
+                  onClick={() => jumpToFrame(i)}
+                  style={{
+                    minWidth: 26,
+                    minHeight: 28,
+                    padding: "0 6px",
+                    borderRadius: 4,
+                    border:
+                      i === activeIdx
+                        ? "1px solid var(--accent)"
+                        : "1px solid var(--border-subtle)",
+                    background:
+                      i === activeIdx ? "var(--accent-soft)" : "transparent",
+                    color: "var(--fg-secondary)",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 10,
+                    cursor: "pointer",
+                  }}
+                  aria-label={`Open ${w.title} in timeline`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+            <Mono
+              style={{
+                color: "var(--fg-tertiary)",
+                fontSize: 9,
+                marginTop: 8,
+                lineHeight: 1.35,
+              }}
+            >
+              Keys 1–{Math.min(9, WORKS.length)} · add ?frame=work-slug to URL
             </Mono>
           </div>
         </div>
@@ -722,6 +888,15 @@ function FilmFrame({
             }}
           />
         )}
+        {w.personSlugs?.length ? (
+          <span
+            key={`${w.slug}-cred-${active ? "1" : "0"}`}
+            className={active ? "filmstrip-creator-handoff" : undefined}
+            style={{ display: "inline-block" }}
+          >
+            <WorkAttributionStack work={w} size={26} position="top-right" />
+          </span>
+        ) : null}
         {w.dur && (
           <div
             style={{

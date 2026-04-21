@@ -1,12 +1,16 @@
+import Link from "next/link";
+import { getWeeklyRotationCredits } from "@/lib/footer-credits";
 import { STUDIO } from "@/content/studio";
 import { Wordmark } from "./wordmark";
 import { Grain } from "./grain";
+import { Mono } from "./mono";
 
 /**
  * Footer as colophon strip — publication end-matter.
  * Inverse surface. One of the two places grain is allowed.
  */
 export function Footer() {
+  const { line: rotationLine } = getWeeklyRotationCredits();
   return (
     <footer
       style={{
@@ -46,6 +50,43 @@ export function Footer() {
             >
               {STUDIO.domain} · {STUDIO.volume} · {STUDIO.year}
             </span>
+          </div>
+          {rotationLine ? (
+            <Mono
+              style={{
+                display: "block",
+                marginTop: 14,
+                color: "var(--fg-on-inverse-muted)",
+                fontSize: 11,
+                lineHeight: 1.45,
+                maxWidth: 360,
+              }}
+            >
+              {rotationLine}
+            </Mono>
+          ) : null}
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 12,
+              marginTop: 12,
+            }}
+          >
+            <Link
+              href="/letter"
+              className="t-label"
+              style={{ color: "var(--fg-on-inverse-secondary)" }}
+            >
+              Slow letter
+            </Link>
+            <Link
+              href="/changelog"
+              className="t-label"
+              style={{ color: "var(--fg-on-inverse-secondary)" }}
+            >
+              Changelog
+            </Link>
           </div>
         </div>
 

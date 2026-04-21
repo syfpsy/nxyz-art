@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getRelatedWorksBySharedCreators } from "@/lib/editorial-links";
 import { WORKS, getWork } from "@/content/works";
 import { Mono } from "@/components/mono";
 import { FrameGlyph, frameBackground } from "@/components/frame-glyph";
 import { HlsVideo } from "@/components/hls-video";
+import { WorkAttributionStack } from "@/components/work-attribution";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -30,6 +32,7 @@ export default async function CaseStudy({ params }: Params) {
   const idx = WORKS.findIndex((x) => x.slug === slug);
   const prev = idx > 0 ? WORKS[idx - 1] : WORKS[WORKS.length - 1];
   const next = idx < WORKS.length - 1 ? WORKS[idx + 1] : WORKS[0];
+  const sharedCredit = getRelatedWorksBySharedCreators(w, 5);
 
   return (
     <article>
@@ -104,13 +107,22 @@ export default async function CaseStudy({ params }: Params) {
             }}
           >
             {w.video ? (
-              <HlsVideo
-                src={w.video}
-                playing
-                controls
-                fit="contain"
-                ariaLabel={`${w.title} — ${w.kind.toLowerCase()}`}
-              />
+              <>
+                <HlsVideo
+                  src={w.video}
+                  playing
+                  controls
+                  fit="contain"
+                  ariaLabel={`${w.title} — ${w.kind.toLowerCase()}`}
+                />
+                {w.personSlugs?.length ? (
+                  <WorkAttributionStack
+                    work={w}
+                    size={32}
+                    position="top-right"
+                  />
+                ) : null}
+              </>
             ) : (
               <>
                 <FrameGlyph work={w} />
@@ -140,6 +152,13 @@ export default async function CaseStudy({ params }: Params) {
                     {w.kind}
                   </Mono>
                 </div>
+                {w.personSlugs?.length ? (
+                  <WorkAttributionStack
+                    work={w}
+                    size={32}
+                    position="top-right"
+                  />
+                ) : null}
               </>
             )}
           </div>
@@ -207,6 +226,44 @@ export default async function CaseStudy({ params }: Params) {
           </div>
         </div>
       </section>
+
+      {sharedCredit.length > 0 && (
+        <section
+          style={{
+            padding: "0 24px 40px",
+            borderTop: "1px solid var(--border-subtle)",
+          }}
+        >
+          <div style={{ maxWidth: "var(--container-max)", margin: "0 auto" }}>
+            <Mono style={{ color: "var(--fg-tertiary)" }}>ALSO CREDITED ON</Mono>
+            <p
+              className="t-body"
+              style={{
+                color: "var(--fg-secondary)",
+                marginTop: 12,
+                maxWidth: 640,
+                lineHeight: 1.55,
+              }}
+            >
+              Same creators appear on{" "}
+              {sharedCredit.map((o, i) => (
+                <span key={o.slug}>
+                  {i > 0 &&
+                    (i === sharedCredit.length - 1 ? " and " : ", ")}
+                  <Link
+                    href={`/work/${o.slug}`}
+                    className="link"
+                    style={{ color: "var(--fg-primary)", fontWeight: 500 }}
+                  >
+                    {o.title}
+                  </Link>
+                </span>
+              ))}
+              .
+            </p>
+          </div>
+        </section>
+      )}
 
       {/* Pager */}
       <section

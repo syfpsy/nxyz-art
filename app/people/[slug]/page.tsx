@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPerson, getWorksForPerson } from "@/content/people";
+import { getFrequentCoCreators } from "@/lib/editorial-links";
 import { PEOPLE } from "@/content/people";
 import { Mono } from "@/components/mono";
 import { PersonAvatar } from "@/components/person-avatar";
@@ -34,6 +35,7 @@ export default async function PersonPage({ params }: Params) {
 
   const works = getWorksForPerson(person);
   const other = person.otherWork ?? [];
+  const coCreators = getFrequentCoCreators(person, 4);
 
   return (
     <article>
@@ -108,6 +110,37 @@ export default async function PersonPage({ params }: Params) {
               >
                 {person.tagline}
               </p>
+              {coCreators.length > 0 && (
+                <p
+                  className="t-body"
+                  style={{
+                    color: "var(--fg-secondary)",
+                    marginTop: 20,
+                    fontSize: 15,
+                    lineHeight: 1.55,
+                    maxWidth: 520,
+                  }}
+                >
+                  Often on the same file:{" "}
+                  {coCreators.map((c, i) => (
+                    <span key={c.peer.slug}>
+                      {i > 0 &&
+                        (i === coCreators.length - 1 ? " and " : ", ")}
+                      <Link
+                        href={`/people/${c.peer.slug}`}
+                        style={{ color: "var(--accent)", fontWeight: 500 }}
+                      >
+                        {c.peer.name}
+                      </Link>
+                      <span style={{ color: "var(--fg-tertiary)", fontSize: 12 }}>
+                        {" "}
+                        ({c.sharedWorks} shared)
+                      </span>
+                    </span>
+                  ))}
+                  .
+                </p>
+              )}
               {person.links.length > 0 && (
                 <div
                   style={{
