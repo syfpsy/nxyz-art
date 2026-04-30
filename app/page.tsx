@@ -1,6 +1,5 @@
 import dynamic from "next/dynamic";
 import { Masthead } from "@/components/masthead";
-import { Catalog } from "@/components/catalog";
 import { ProductsGrid } from "@/components/products-grid";
 import { PeriodicTable } from "@/components/periodic-table";
 import { ExperimentsPreview } from "@/components/experiments-preview";
@@ -23,7 +22,6 @@ export default function HomePage() {
     <>
       <Masthead />
       <Signal />
-      <Catalog />
       <ProductsGrid />
       <PeriodicTable />
       <ExperimentsPreview />

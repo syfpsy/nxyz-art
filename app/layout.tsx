@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { spaceGrotesk, jetBrainsMono } from "@/lib/fonts";
 import { ThemeScript } from "@/components/theme-toggle";
 import { Nav } from "@/components/nav";
@@ -71,7 +72,13 @@ export default function RootLayout({
         <link rel="preconnect" href="https://video.gumlet.io" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://gumlet.tv" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://www.openstreetmap.org" />
+        <link rel="preconnect" href="https://perchlens.com" crossOrigin="anonymous" />
         <ThemeScript />
+        <Script
+          src="https://perchlens.com/cv.js"
+          data-site="cv_cf903du1b6"
+          strategy="afterInteractive"
+        />
       </head>
       <body>
         {/* Skip link: visible only on keyboard focus. Saves tabbing past the
