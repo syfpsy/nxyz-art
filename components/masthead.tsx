@@ -13,7 +13,6 @@ import {
 } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { PEOPLE } from "@/content/people";
 import { WORKS, type Work } from "@/content/works";
 import { WorkAttributionStack } from "./work-attribution";
 import { Mono } from "./mono";
@@ -21,192 +20,89 @@ import { FrameGlyph, frameBackground } from "./frame-glyph";
 import { HlsVideo } from "./hls-video";
 
 /**
- * Unusual hero: no headline. Giant wordmark at the top like a title page,
- * a dateline strip above it, then a horizontal filmstrip of works below.
- * Reads like a colophon or gallery nameplate.
+ * Home masthead: one spotlight tile from the same archive as the timeline,
+ * then the horizontal filmstrip (Index B). The former “Index A” press block
+ * was removed for a tighter fold.
  */
-function StudioByline() {
-  const lines = useMemo(
-    () => PEOPLE.map((p) => p.tagline).filter((t) => t.trim().length > 0),
-    [],
+function spotlightWorkIndex(): number {
+  if (WORKS.length === 0) return 0;
+  const d = new Date();
+  const dayNumber = Math.floor(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 86400000,
   );
-  const [i, setI] = useState(0);
-  useEffect(() => {
-    if (lines.length <= 1) return;
-    const t = window.setInterval(
-      () => setI((n) => (n + 1) % lines.length),
-      9000,
-    );
-    return () => window.clearInterval(t);
-  }, [lines.length]);
-  if (lines.length === 0) return null;
-  return (
-    <div
-      style={{
-        paddingTop: 10,
-        paddingBottom: 12,
-        borderBottom: "1px solid var(--border-subtle)",
-      }}
-    >
-      <Mono
-        style={{
-          fontSize: 12,
-          color: "var(--fg-secondary)",
-          display: "block",
-          lineHeight: 1.55,
-          maxWidth: 720,
-        }}
-      >
-        {lines[i]}
-      </Mono>
-    </div>
-  );
+  return dayNumber % WORKS.length;
 }
 
 function MastheadInner() {
   const searchParams = useSearchParams();
   const initialFrameSlug = searchParams.get("frame");
-  const [counter, setCounter] = useState(2481);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
-    const t = setInterval(
-      () => setCounter((c) => c + Math.floor(Math.random() * 3)),
-      1100,
-    );
-    return () => clearInterval(t);
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => setReduceMotion(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
   }, []);
 
-  const year = new Date().getFullYear();
-  const active =
-    WORKS.length > 0 ? (WORKS[activeIdx] ?? WORKS[0]) : undefined;
+  const spotlightIdx = useMemo(() => spotlightWorkIndex(), []);
+  const spotlight = WORKS[spotlightIdx];
 
   return (
     <section
       aria-label="Masthead"
       style={{ borderBottom: "1px solid var(--border-subtle)", position: "relative" }}
     >
-      <div
-        style={{
-          padding: "clamp(24px, 5vw, 36px) clamp(16px, 4vw, 24px) 0",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        {/* Dateline strip */}
-        <div
-          className="masthead-dateline"
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            justifyContent: "space-between",
-            gap: "clamp(12px, 3vw, 24px)",
-            borderBottom: "1px solid var(--fg-primary)",
-            paddingBottom: 14,
-            flexWrap: "wrap",
-          }}
-        >
-          <Mono>PRESS · RELEASE · {year}</Mono>
-          <Mono>VOL · {counter.toString().padStart(5, "0")}</Mono>
-          <Mono>FOLIO · A–H</Mono>
-        </div>
-
-        <StudioByline />
-
-        {/* Oversized typographic wordmark */}
+      {WORKS.length > 0 && spotlight && (
         <div
           style={{
-            fontFamily: "var(--font-sans)",
-            fontWeight: 600,
-            fontSize: "clamp(96px, 20vw, 300px)",
-            lineHeight: 1,
-            letterSpacing: "-0.06em",
-            color: "var(--fg-primary)",
-            display: "flex",
-            alignItems: "flex-end",
-            gap: "0.05em",
-            marginTop: 18,
-            paddingBottom: "0.08em",
+            padding: "clamp(20px, 4vw, 28px) clamp(16px, 4vw, 24px)",
+            borderBottom: "1px solid var(--border-subtle)",
+            maxWidth: "var(--container-max)",
+            margin: "0 auto",
+            display: "grid",
+            gridTemplateColumns: "auto minmax(0, 320px)",
+            gap: "clamp(16px, 3vw, 28px)",
+            alignItems: "start",
           }}
+          className="masthead-spotlight-row"
         >
-          <span>nxyz</span>
-          <span
-            aria-hidden
-            style={{
-              width: "0.12em",
-              height: "0.12em",
-              borderRadius: "50%",
-              background: "var(--accent)",
-              marginLeft: "0.14em",
-              marginBottom: "0.1em",
-              flexShrink: 0,
-            }}
+          <div style={{ paddingTop: 4 }}>
+            <Mono style={{ color: "var(--fg-tertiary)" }}>FEATURE · PULL</Mono>
+            <div
+              style={{
+                fontFamily: "var(--font-sans)",
+                fontWeight: 600,
+                fontSize: 22,
+                letterSpacing: "-0.02em",
+                marginTop: 8,
+                maxWidth: 200,
+              }}
+            >
+              From the timeline
+            </div>
+            <Mono
+              style={{
+                color: "var(--fg-secondary)",
+                marginTop: 10,
+                display: "block",
+                fontSize: 11,
+                lineHeight: 1.45,
+              }}
+            >
+              Picks a different catalog entry by UTC day. Same pool as the strip
+              below.
+            </Mono>
+          </div>
+          <TimelineSpotlightCard
+            w={spotlight}
+            playVideo={!reduceMotion}
           />
         </div>
+      )}
 
-        {/* Colophon row — three-column editorial lockup */}
-        <div
-          className="masthead-colophon"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.2fr 1.8fr 1fr",
-            gap: 24,
-            paddingTop: 20,
-            marginTop: 20,
-            borderTop: "1px solid var(--border-subtle)",
-          }}
-        >
-          <Mono style={{ color: "var(--fg-secondary)" }}>
-            — a studio for motion, systems, and signal.
-          </Mono>
-          <p
-            style={{
-              margin: 0,
-              fontFamily: "var(--font-sans)",
-              fontWeight: 500,
-              fontSize: "clamp(16px, 1.4vw, 20px)",
-              lineHeight: 1.45,
-              color: "var(--fg-primary)",
-              textWrap: "pretty",
-              maxWidth: 640,
-            }}
-          >
-            Eight works on file. Four on rotation. Two in progress. One studio in İstanbul,
-            working across time zones by way of slow correspondence.
-          </p>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 4,
-              textAlign: "right",
-            }}
-          >
-            {active ? (
-              <>
-                <Mono style={{ color: "var(--fg-tertiary)" }}>NOW PLAYING</Mono>
-                <span
-                  style={{
-                    fontFamily: "var(--font-sans)",
-                    fontWeight: 500,
-                    fontSize: 15,
-                    letterSpacing: "-0.01em",
-                  }}
-                >
-                  {active.title} / {active.kind.toLowerCase()}
-                </span>
-                <Mono style={{ color: "var(--accent)" }}>
-                  → fr. {active.dur ?? "static · n/a"}
-                </Mono>
-              </>
-            ) : (
-              <Mono style={{ color: "var(--fg-tertiary)" }}>NO WORKS ON FILE</Mono>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Timeline filmstrip */}
       {WORKS.length > 0 && (
         <Filmstrip
           activeIdx={activeIdx}
@@ -216,15 +112,10 @@ function MastheadInner() {
       )}
 
       <style>{`
-        @media (max-width: 520px) {
-          .masthead-dateline > :nth-child(3) { display: none; }
-        }
-        @media (max-width: 720px) {
-          .masthead-colophon {
+        @media (max-width: 640px) {
+          .masthead-spotlight-row {
             grid-template-columns: 1fr !important;
-            gap: clamp(16px, 4vw, 24px) !important;
           }
-          .masthead-colophon > div:last-child { text-align: left !important; }
         }
         @keyframes filmstripCreatorPop {
           from {
@@ -254,7 +145,7 @@ export function Masthead() {
           aria-label="Loading masthead"
           style={{
             borderBottom: "1px solid var(--border-subtle)",
-            minHeight: 400,
+            minHeight: 280,
             background: "var(--bg-base)",
           }}
         />
@@ -262,6 +153,127 @@ export function Masthead() {
     >
       <MastheadInner />
     </Suspense>
+  );
+}
+
+/** One catalog tile — same visual language as the filmstrip, without strip chrome. */
+function TimelineSpotlightCard({
+  w,
+  playVideo,
+}: {
+  w: Work;
+  playVideo: boolean;
+}) {
+  const fg = w.video ? "#F3F5F7" : w.tone === "dark" ? "#F3F5F7" : "#111214";
+  return (
+    <Link
+      href={`/work/${w.slug}`}
+      draggable={false}
+      onDragStart={(e) => e.preventDefault()}
+      style={{
+        border: "1px solid var(--border-subtle)",
+        borderRadius: 4,
+        padding: 14,
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        background: "var(--bg-elevated)",
+        color: "inherit",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <Mono style={{ color: "var(--fg-tertiary)" }}>{w.n}</Mono>
+        <Mono style={{ color: w.accent ? "var(--accent)" : "var(--fg-tertiary)" }}>
+          {w.year}
+        </Mono>
+      </div>
+      <div
+        style={{
+          flex: 1,
+          minHeight: 140,
+          borderRadius: 4,
+          background: frameBackground(w.tone),
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        {w.video ? (
+          <HlsVideo
+            src={w.video}
+            playing={playVideo}
+            ariaLabel={`${w.title} — motion preview`}
+          />
+        ) : (
+          <FrameGlyph work={w} />
+        )}
+        {w.video && (
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(180deg, transparent 55%, rgba(0,0,0,0.35) 100%)",
+              pointerEvents: "none",
+            }}
+          />
+        )}
+        {w.personSlugs?.length ? (
+          <WorkAttributionStack work={w} size={26} position="top-right" />
+        ) : null}
+        {w.dur && (
+          <div
+            style={{
+              position: "absolute",
+              left: 8,
+              bottom: 6,
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+            }}
+          >
+            <span
+              style={{
+                width: 0,
+                height: 0,
+                borderLeft: `5px solid ${fg}`,
+                borderTop: "3px solid transparent",
+                borderBottom: "3px solid transparent",
+              }}
+            />
+            <span
+              style={{
+                fontFamily: "var(--font-mono)",
+                color: fg,
+                fontSize: 9,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+              }}
+            >
+              {w.dur}
+            </span>
+          </div>
+        )}
+      </div>
+      <div>
+        <div
+          style={{
+            fontFamily: "var(--font-sans)",
+            fontWeight: 600,
+            fontSize: 19,
+            letterSpacing: "-0.02em",
+          }}
+        >
+          {w.title}
+          {w.accent && <span style={{ color: "var(--accent)" }}>.</span>}
+        </div>
+        <Mono
+          style={{ color: "var(--fg-secondary)", marginTop: 4, display: "block" }}
+        >
+          {w.kind}
+        </Mono>
+      </div>
+    </Link>
   );
 }
 
