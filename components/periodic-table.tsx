@@ -33,7 +33,7 @@ export function PeriodicTable() {
   return (
     <section
       style={{
-        padding: "80px 24px",
+        padding: "56px 24px",
         borderBottom: "1px solid var(--border-subtle)",
       }}
     >
@@ -49,7 +49,7 @@ export function PeriodicTable() {
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 10,
+            gap: 8,
           }}
         >
           {ELEMENTS.map((el) => {

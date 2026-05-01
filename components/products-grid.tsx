@@ -11,6 +11,8 @@ import { BrowserFrame } from "./browser-frame";
 export function ProductsGrid() {
   return (
     <section
+      id="software"
+      aria-label="Software from the studio"
       style={{
         padding: "64px 24px",
         background: "var(--bg-base)",

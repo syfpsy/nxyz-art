@@ -20,6 +20,12 @@ type BrowserFrameProps = {
    * product cards come in view at once.
    */
   staggerFrames?: number;
+  /**
+   * When true with `variant="card"`: never embed the live site — show a static
+   * tinted preview instead. Ignored for `variant="detail"`. Use for marquees
+   * where many tiles are visible at once so third-party documents are not loaded.
+   */
+  decorative?: boolean;
 };
 
 /**
@@ -37,8 +43,10 @@ export function BrowserFrame({
   // embedded site appears roughly half size — more content, denser cards.
   viewportWidth = variant === "card" ? 2560 : 1440,
   staggerFrames = 0,
+  decorative = false,
 }: BrowserFrameProps) {
   const blocked = product.embedBlocked ?? false;
+  const noLiveEmbed = blocked || (variant === "card" && decorative);
   const bodyRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   // Defer the iframe until the card enters the viewport. Four simultaneous
@@ -50,6 +58,7 @@ export function BrowserFrame({
 
   // Recompute the scale so `viewportWidth` fits the card body.
   useEffect(() => {
+    if (noLiveEmbed) return;
     const el = bodyRef.current;
     if (!el) return;
     const compute = () => {
@@ -60,13 +69,13 @@ export function BrowserFrame({
     const ro = new ResizeObserver(compute);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [viewportWidth]);
+  }, [viewportWidth, noLiveEmbed]);
 
   // Intersection-gated mount for card variants. Respects
   // `prefers-reduced-data` by never auto-mounting — the user can still
   // opt in via the "Load preview" button.
   useEffect(() => {
-    if (variant !== "card" || mounted || blocked) return;
+    if (variant !== "card" || mounted || noLiveEmbed) return;
     const el = bodyRef.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
 
@@ -105,7 +114,7 @@ export function BrowserFrame({
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [variant, mounted, blocked, staggerFrames]);
+  }, [variant, mounted, noLiveEmbed, staggerFrames]);
 
   return (
     <div
@@ -205,7 +214,7 @@ export function BrowserFrame({
           background: "var(--bg-elevated)",
         }}
       >
-        {!blocked && mounted && (
+        {!noLiveEmbed && mounted && (
           <iframe
             src={product.url}
             title={`${product.name} live preview`}
@@ -226,7 +235,11 @@ export function BrowserFrame({
           />
         )}
 
-        {!blocked && !mounted && (
+        {variant === "card" && decorative && !blocked && (
+          <DecorativeProductPreview product={product} />
+        )}
+
+        {!noLiveEmbed && !mounted && (
           <button
             type="button"
             onClick={(e) => {
@@ -271,7 +284,7 @@ export function BrowserFrame({
 
         {blocked && <BlockedFallback product={product} variant={variant} />}
 
-        {variant === "card" && !blocked && (
+        {variant === "card" && !noLiveEmbed && (
           <div
             aria-hidden
             style={{
@@ -284,6 +297,84 @@ export function BrowserFrame({
           />
         )}
       </div>
+    </div>
+  );
+}
+
+/** Static “site” preview for marquees — no network, no iframe. */
+function DecorativeProductPreview({ product }: { product: Product }) {
+  const tint = hexWithAlpha(product.accent, 0.14);
+  const ghost = hexWithAlpha(product.accent, 0.06);
+  return (
+    <div
+      aria-hidden
+      style={{
+        position: "absolute",
+        inset: 0,
+        display: "grid",
+        alignContent: "center",
+        justifyItems: "start",
+        gap: 8,
+        padding: "clamp(16px, 4vw, 28px)",
+        background: `
+          radial-gradient(100% 80% at 80% 15%, ${tint} 0%, transparent 55%),
+          radial-gradient(90% 70% at 10% 90%, ${ghost} 0%, transparent 50%),
+          linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-sunken) 100%)
+        `,
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          fontFamily: "var(--font-sans)",
+          fontWeight: 600,
+          fontSize: "clamp(17px, 2.4vw, 22px)",
+          letterSpacing: "-0.03em",
+          lineHeight: 1.15,
+          color: "var(--fg-primary)",
+          maxWidth: "18ch",
+          textWrap: "balance",
+        }}
+      >
+        {product.name}
+      </div>
+      <p
+        style={{
+          margin: 0,
+          fontFamily: "var(--font-sans)",
+          fontWeight: 500,
+          fontSize: 13,
+          lineHeight: 1.45,
+          letterSpacing: "-0.01em",
+          color: "var(--fg-secondary)",
+          maxWidth: "28ch",
+          textWrap: "pretty",
+        }}
+      >
+        {product.tagline}
+      </p>
+      <span
+        style={{
+          marginTop: 4,
+          fontFamily: "var(--font-mono)",
+          fontSize: 10,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          color: "var(--fg-tertiary)",
+        }}
+      >
+        {product.domain}
+      </span>
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "linear-gradient(180deg, transparent 0%, transparent 58%, rgba(17,18,20,0.12) 100%)",
+          pointerEvents: "none",
+        }}
+      />
     </div>
   );
 }
